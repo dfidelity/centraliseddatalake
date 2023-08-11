@@ -1,0 +1,21 @@
+{
+  "id": "string",
+  "type": "string",
+  "attributesreference": "string",
+  "attributesloginlink": "string",
+  "attributessharelink": "string",
+  "attributesadvocacycount": "integer",
+  "attributesattributablecount": "string",
+  "attributesregisteredat": "timestamp",
+  "attributesupdatedat": "timestamp",
+  "eventid": "string",
+  "event": "string",
+  "loadetlid": "string",
+  "loadinserteddate": "string",
+  "loadinsertedby": "string",
+  "loadupdateddate": "string",
+  "loadupdatedby": "string",
+  "loaddatasource": "string",
+  "partitiondate": "string",
+  "loadinsertedtimestamp": "float"
+}

@@ -1,0 +1,107 @@
+{
+  "Type": "AWS::Glue::Table",
+  "DependsOn": "GlobalETLConfigDB",
+  "Properties": {
+    "CatalogId": {
+      "Ref": "AWS::AccountId"
+    },
+    "DatabaseName": {
+      "Ref": "GlobalETLConfigDB"
+    },
+    "TableInput": {
+      "Name": "etl_execution_log_history",
+      "TableType": "EXTERNAL_TABLE",
+      "Description": "ETL log history table",
+      "Parameters": {
+        "classification": "parquet"
+      },
+      "StorageDescriptor": {
+        "Location": {
+          "Fn::Join": [
+            "",
+            [
+              "s3://",
+              {
+                "Fn::ImportValue": {
+                  "Fn::Sub": "logs-bucket-${BillingEnvironmentName}"
+                }
+              },
+              "/etl_execution_log_history/"
+            ]
+          ]
+        },
+        "Columns": [
+          {
+            "Name": "batch_id",
+            "Type": "string",
+            "Comment": ""
+          },
+          {
+            "Name": "source",
+            "Type": "string",
+            "Comment": ""
+          },
+          {
+            "Name": "table_name",
+            "Type": "string",
+            "Comment": ""
+          },
+          {
+            "Name": "job_type",
+            "Type": "string",
+            "Comment": ""
+          },
+          {
+            "Name": "status",
+            "Type": "string",
+            "Comment": ""
+          },
+          {
+            "Name": "message",
+            "Type": "string",
+            "Comment": ""
+          },
+          {
+            "Name": "job_start_date",
+            "Type": "string",
+            "Comment": ""
+          },
+          {
+            "Name": "job_end_date",
+            "Type": "string",
+            "Comment": ""
+          },
+          {
+            "Name": "extract_start_date",
+            "Type": "string",
+            "Comment": ""
+          },
+          {
+            "Name": "extract_end_date",
+            "Type": "string",
+            "Comment": ""
+          },
+          {
+            "Name": "row_count",
+            "Type": "string",
+            "Comment": ""
+          }
+        ],
+        "InputFormat": "org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat",
+        "OutputFormat": "org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat",
+        "Parameters": {
+          "has_encrypted_data": "false"
+        },
+        "NumberOfBuckets": "-1",
+        "Compressed": "false",
+        "SerdeInfo": {
+          "Name": "ParquetSerdeInfo",
+          "SerializationLibrary": "org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe",
+          "Parameters": {
+            "serialization.format": "1"
+          }
+        }
+      }
+    }
+  }
+}

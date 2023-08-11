@@ -1,0 +1,213 @@
+{
+  "Type": "AWS::Glue::Table",
+  "DependsOn": "GlobalETLConfigDB",
+  "Properties": {
+    "CatalogId": {
+      "Ref": "AWS::AccountId"
+    },
+    "DatabaseName": {
+      "Ref": "GlobalETLConfigDB"
+    },
+    "TableInput": {
+      "Name": "etl_job_config",
+      "TableType": "EXTERNAL_TABLE",
+      "Description": "ETL configuration table",
+      "Parameters": {
+        "classification": "json"
+      },
+      "StorageDescriptor": {
+        "Location": {
+          "Fn::Sub": "s3://${CodeBucketName}/config/etl_job_config/"
+        },
+        "Columns": [
+          {
+            "Name": "source",
+            "Type": "string",
+            "Comment": ""
+          },
+          {
+            "Name": "table_name",
+            "Type": "string",
+            "Comment": ""
+          },
+          {
+            "Name": "original_table_name",
+            "Type": "string",
+            "Comment": ""
+          },
+          {
+            "Name": "one_off_to_raw",
+            "Type": "string",
+            "Comment": ""
+          },
+          {
+            "Name": "landing_to_raw",
+            "Type": "string",
+            "Comment": ""
+          },
+          {
+            "Name": "raw_to_refined",
+            "Type": "string",
+            "Comment": ""
+          },
+          {
+            "Name": "group_id",
+            "Type": "string",
+            "Comment": ""
+          },
+          {
+            "Name": "one_off_path",
+            "Type": "string",
+            "Comment": ""
+          },
+          {
+            "Name": "one_off_format",
+            "Type": "string",
+            "Comment": ""
+          },
+          {
+            "Name": "landing_path",
+            "Type": "string",
+            "Comment": ""
+          },
+          {
+            "Name": "landing_format",
+            "Type": "string",
+            "Comment": ""
+          },
+          {
+            "Name": "schema_path",
+            "Type": "string",
+            "Comment": ""
+          },
+          {
+            "Name": "source_date_format",
+            "Type": "string",
+            "Comment": ""
+          },
+          {
+            "Name": "execution_type",
+            "Type": "string",
+            "Comment": ""
+          },
+          {
+            "Name": "source_partition_to_col",
+            "Type": "string",
+            "Comment": ""
+          },
+          {
+            "Name": "raw_data_transform",
+            "Type": "string",
+            "Comment": ""
+          },
+          {
+            "Name": "overwrite_mode",
+            "Type": "string",
+            "Comment": ""
+          },
+          {
+            "Name": "non_hudi_mode",
+            "Type": "string",
+            "Comment": ""
+          },
+          {
+            "Name": "csv_separator",
+            "Type": "string",
+            "Comment": ""
+          },
+          {
+            "Name": "csv_multi_line",
+            "Type": "string",
+            "Comment": ""
+          },
+          {
+            "Name": "header",
+            "Type": "string",
+            "Comment": ""
+          },
+          {
+            "Name": "row_tag",
+            "Type": "string",
+            "Comment": ""
+          },
+          {
+            "Name": "partition_key",
+            "Type": "string",
+            "Comment": ""
+          },
+          {
+            "Name": "data_validation",
+            "Type": "string",
+            "Comment": ""
+          },
+          {
+            "Name": "validation_exception",
+            "Type": "string",
+            "Comment": ""
+          },
+          {
+            "Name": "anonymized_fields",
+            "Type": "string",
+            "Comment": ""
+          },
+          {
+            "Name": "raw_path",
+            "Type": "string",
+            "Comment": ""
+          },
+          {
+            "Name": "raw_db",
+            "Type": "string",
+            "Comment": ""
+          },
+          {
+            "Name": "update_supported",
+            "Type": "string",
+            "Comment": ""
+          },
+          {
+            "Name": "update_date_column",
+            "Type": "string",
+            "Comment": ""
+          },
+          {
+            "Name": "update_date_format",
+            "Type": "string",
+            "Comment": ""
+          },
+          {
+            "Name": "refined_data_transform",
+            "Type": "string",
+            "Comment": ""
+          },
+          {
+            "Name": "unique_key",
+            "Type": "string",
+            "Comment": ""
+          },
+          {
+            "Name": "refined_path",
+            "Type": "string",
+            "Comment": ""
+          },
+          {
+            "Name": "refined_db",
+            "Type": "string",
+            "Comment": ""
+          }
+        ],
+        "InputFormat": "org.apache.hadoop.mapred.TextInputFormat",
+        "OutputFormat": "org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat",
+        "Parameters": {
+          "has_encrypted_data": "false"
+        },
+        "NumberOfBuckets": "-1",
+        "Compressed": "false",
+        "SerdeInfo": {
+          "Name": "JsonSerdeInfo",
+          "SerializationLibrary": "org.openx.data.jsonserde.JsonSerDe"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,228 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "DMS reconciliation lambda template",
+  "Parameters": {
+    "BillingEnvironmentName": {
+      "AllowedPattern": "[a-zA-Z0-9]*",
+      "Default": "dev",
+      "Description": "The target environment in which the stack is being created",
+      "MinLength": 2,
+      "Type": "String"
+    },
+    "LambdaHandler": {
+      "Default": "dms_reconciliation_lambda_handler.dms_reconciliation_handler",
+      "Description": "Name of the python file (lambda handler)",
+      "Type": "String"
+    },
+    "LambdaIAMRole": {
+      "Description": "IAM role for DMS reconcilation report",
+      "Type": "String"
+    },
+    "S3BucketName": {
+      "Description": "Name of the bucket in which lambda code package is located (rx-gbs-datalake-processingzone-env)",
+      "Type": "String"
+    },
+    "S3PathForLambdaCodePackage": {
+      "Description": "Path inside the bucket at which lambda code package is located (../rx-gbs-datalake-dms-reconcilation-reports.zip)",
+      "Type": "String"
+    },
+    "PyodbcPackagePath": {
+      "Description": "Path inside the bucket at which lambda pyodbc package is located (../pyodbc-3.7.zip)",
+      "Type": "String"
+    },
+    "SSMPath": {
+      "Description": "AWS security store path (/rx/gbs/datalake/env/dms/)",
+      "Type": "String"
+    },
+    "SourceName": {
+      "Default": "oracle",
+      "Description": "Source which we need to process like sqlserver or oracle",
+      "Type": "String"
+    },
+    "SecurityGroups": {
+      "Description": "The list of SecurityGroupIds in your Virtual Private Cloud (VPC)",
+      "Type": "List<AWS::EC2::SecurityGroup::Id>"
+    }
+  },
+  "Mappings": {
+    "General": {
+      "Tags": {
+        "FinanceActivityId": "8000",
+        "FinanceEntityId": "0092",
+        "FinanceManagementCentreId": "99440",
+        "JiraProjectCode": "RDL",
+        "PmProgramme": "platform",
+        "PmProjectCode": "n/a"
+      }
+    },
+    "Accounts": {
+//      "233855833439": {
+//        "VpcId": "vpc-0d8c5716b7a6dbf81",
+//        "PrivateSubnets": [
+//          "subnet-0df91653a7438e6f4",
+//          "subnet-09315bb9280275179"
+//        ]
+//      },
+//      "376980907058": {
+//        "VpcId": "vpc-0d8c5716b7a6dbf81",
+//        "PrivateSubnets": [
+//          "subnet-0df91653a7438e6f4",
+//          "subnet-09315bb9280275179"
+//        ]
+//      },
+      "767030707495": {
+        "VpcId": "vpc-0d8c5716b7a6dbf81",
+        "PrivateSubnets": [
+          "subnet-0df91653a7438e6f4",
+          "subnet-09315bb9280275179"
+        ]
+      }
+    }
+  },
+  "Resources": {
+    "LambdaFunction": {
+      "Type": "AWS::Lambda::Function",
+  "DependsOn": [
+    "LambdaServiceRole"
+  ],
+      "Properties": {
+        "Code": {
+          "S3Bucket": {
+            "Ref": "CodeBucketName"
+          },
+          "S3Key": "emr-jobs/lambdas/..."
+        },
+        "Handler": "lambda_function.lambda_handler",
+        "FunctionName": "rx-gbs-datalake-dms-reconcilation-reports",
+        "Layers": [
+          {
+            "Ref": "PYODBCLayer"
+          }
+        ],
+        "MemorySize": 256,
+        "Role": {
+          "Fn::GetAtt": [
+        "LambdaServiceRole",
+        "Arn"
+      ]
+        },
+        "Runtime": "python3.7",
+        "Timeout": 900,
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "rx-gbs-datalake-dms-lambda-reconcilation-reports"
+          },
+          {
+            "Key": "rx:billing:finance-activity-id",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "FinanceActivityId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:finance-entity-id",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "FinanceEntityId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:finance-management-centre-id",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "FinanceManagementCentreId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:jira-project-code",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "JiraProjectCode"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:pm-programme",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "PmProgramme"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:pm-project-code",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "PmProjectCode"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:environment-name",
+            "Value": {
+              "Ref": "BillingEnvironmentName"
+            }
+          }
+        ],
+        "Environment": {
+          "Variables": {
+            "parameter_store_path": {
+              "Ref": "SSMPath"
+            },
+            "source_type": {
+              "Ref": "SourceName"
+            }
+          }
+        },
+        "VpcConfig": {
+          "SecurityGroupIds": {
+            "Ref": "SecurityGroups"
+          },
+          "SubnetIds": {
+            "Fn::FindInMap": [
+              "Accounts",
+              {
+                "Ref": "AWS::AccountId"
+              },
+              "PrivateSubnets"
+            ]
+          }
+        }
+      }
+    },
+    "PYODBCLayer": {
+      "Type": "AWS::Lambda::LayerVersion",
+      "Properties": {
+        "CompatibleRuntimes": [
+          "python3.7"
+        ],
+        "Content": {
+          "S3Bucket": {
+            "Ref": "CodeBucketName"
+          },
+          "S3Key": {
+            "Ref": "PyodbcPackagePath"
+          }
+        },
+        "Description": "PYODBC for sql server",
+        "LayerName": "PYODBC_"
+      }
+    }
+  }
+}

@@ -1,0 +1,101 @@
+{
+  "Type": "AWS::Lambda::Function",
+  "DependsOn": [
+    "LambdaServiceRole"
+  ],
+  "Properties": {
+    "Code": {
+      "S3Bucket": {
+        "Ref": "CodeBucketName"
+      },
+      "S3Key": "emr-jobs/lambdas/rx-gbs-datalake-etl-job-config-validation.zip"
+    },
+    "Handler": "lambda_function.lambda_handler",
+    "FunctionName": {
+      "Fn::Sub": "rx-gbs-datalake-etl-job-config-validation-${BillingEnvironmentName}"
+    },
+    "MemorySize": 128,
+    "Role": {
+      "Fn::GetAtt": [
+        "LambdaServiceRole",
+        "Arn"
+      ]
+    },
+    "Runtime": "python3.7",
+    "Timeout": 330,
+    "Tags": [
+      {
+        "Key": "Name",
+        "Value": {
+          "Fn::Sub": "rx-gbs-datalake-etl-job-config-validation-${BillingEnvironmentName}"
+        }
+      },
+      {
+        "Key": "rx:billing:finance-activity-id",
+        "Value": {
+          "Fn::FindInMap": [
+            "General",
+            "Tags",
+            "FinanceActivityId"
+          ]
+        }
+      },
+      {
+        "Key": "rx:billing:finance-entity-id",
+        "Value": {
+          "Fn::FindInMap": [
+            "General",
+            "Tags",
+            "FinanceEntityId"
+          ]
+        }
+      },
+      {
+        "Key": "rx:billing:finance-management-centre-id",
+        "Value": {
+          "Fn::FindInMap": [
+            "General",
+            "Tags",
+            "FinanceManagementCentreId"
+          ]
+        }
+      },
+      {
+        "Key": "rx:billing:jira-project-code",
+        "Value": {
+          "Fn::FindInMap": [
+            "General",
+            "Tags",
+            "JiraProjectCode"
+          ]
+        }
+      },
+      {
+        "Key": "rx:billing:pm-programme",
+        "Value": {
+          "Fn::FindInMap": [
+            "General",
+            "Tags",
+            "PmProgramme"
+          ]
+        }
+      },
+      {
+        "Key": "rx:billing:pm-project-code",
+        "Value": {
+          "Fn::FindInMap": [
+            "General",
+            "Tags",
+            "PmProjectCode"
+          ]
+        }
+      },
+      {
+        "Key": "rx:billing:environment-name",
+        "Value": {
+          "Ref": "BillingEnvironmentName"
+        }
+      }
+    ]
+  }
+}

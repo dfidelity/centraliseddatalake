@@ -1,0 +1,16 @@
+{
+  "workgroupid": "long",
+  "projectid": "long",
+  "responseid": "long",
+  "code": "string",
+  "value": "string",
+  "deleteflag": "string",
+  "loadetlid": "string",
+  "loadinserteddate": "string",
+  "loadinsertedby": "string",
+  "loadupdateddate": "string",
+  "loadupdatedby": "string",
+  "loaddatasource": "string",
+  "partitiondate": "string",
+  "loadinsertedtimestamp": "float"
+}

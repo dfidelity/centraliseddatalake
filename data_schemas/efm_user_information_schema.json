@@ -1,0 +1,21 @@
+{
+  "workgroupid": "long",
+  "projectid": "long",
+  "id": "long",
+  "group": "long",
+  "culture": "string",
+  "status": "string",
+  "reviewerstatus": "string",
+  "name": "string",
+  "display": "string",
+  "email": "string",
+  "source": "string",
+  "loadetlid": "string",
+  "loadinserteddate": "string",
+  "loadinsertedby": "string",
+  "loadupdateddate": "string",
+  "loadupdatedby": "string",
+  "loaddatasource": "string",
+  "partitiondate": "string",
+  "loadinsertedtimestamp": "float"
+}

@@ -1,0 +1,15 @@
+{
+ "id": "string",
+ "type": "string",
+ "code": "string",
+ "edition": "string",
+ "name": "string",
+ "loadetlid": "string",
+ "loadinserteddate": "string",
+ "loadinsertedby": "string",
+ "loadupdateddate": "string",
+ "loadupdatedby": "string",
+ "loaddatasource": "string",
+ "partitiondate": "string",
+ "loadinsertedtimestamp": "float"
+}

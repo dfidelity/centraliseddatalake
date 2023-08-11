@@ -1,0 +1,2740 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Template for creating basic resources",
+  "Parameters": {
+    "BillingEnvironmentName": {
+      "AllowedPattern": "[a-zA-Z0-9]*",
+      "Default": "dev",
+      "Description": "The target environment in which the stack is being created",
+      "MinLength": 2,
+      "Type": "String"
+    },
+    "deploymentRole": {
+      "Description": "The target environment in which the stack is being created",
+      "Type": "String"
+    },
+    "CreateProcessingZoneNotifications": {
+      "Description": "The target environment in which the stack is being created",
+      "Type": "String",
+      "Default": "false",
+      "AllowedValues": [
+        "true",
+        "false"
+      ]
+    }
+  },
+  "Mappings": {
+    "General": {
+      "Tags": {
+        "FinanceActivityId": "8000",
+        "FinanceEntityId": "0092",
+        "FinanceManagementCentreId": "99440",
+        "JiraProjectCode": "RDL",
+        "PmProgramme": "platform",
+        "PmProjectCode": "n/a"
+      }
+    }
+  },
+  "Conditions": {
+    "IsDev": {
+      "Fn::And": [
+        {
+          "Fn::Equals": [
+            {
+              "Ref": "AWS::AccountId"
+            },
+            "233855833439"
+          ]
+        },
+        {
+          "Fn::Equals": [
+            {
+              "Ref": "BillingEnvironmentName"
+            },
+            "dev"
+          ]
+        }
+      ]
+    },
+    "IsNotDev": {
+      "Fn::Not": [
+        {
+          "Condition": "IsDev"
+        }
+      ]
+    },
+    "IsPreprod": {
+      "Fn::Equals": [
+        {
+          "Ref": "AWS::AccountId"
+        },
+        "376980907058"
+      ]
+    },
+    "IsProd": {
+      "Fn::Equals": [
+        {
+          "Ref": "AWS::AccountId"
+        },
+        "767030707495"
+      ]
+    },
+    "IsNotProd": {
+      "Fn::Not": [
+        {
+          "Condition": "IsProd"
+        }
+      ]
+    },
+    "IsNotPreprod": {
+      "Fn::Not": [
+        {
+          "Condition": "IsPreprod"
+        }
+      ]
+    },
+    "IsPreprodOrProd": {
+      "Fn::Or": [
+        {
+          "Condition": "IsPreprod"
+        },
+        {
+          "Condition": "IsProd"
+        }
+      ]
+    },
+    "WithProcessingZoneNotifications": {
+      "Fn::Equals": [
+        {
+          "Ref": "CreateProcessingZoneNotifications"
+        },
+        "true"
+      ]
+    }
+  },
+  "Resources": {
+    "DataopsDataKMSKey": {
+      "Type": "AWS::KMS::Key",
+      "Properties": {
+        "Description": "rx-gbs-datalake-rds-dataops KMS key",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "rx-gbs-datalake-rds-dataops"
+          },
+          {
+            "Key": "rx:billing:finance-activity-id",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "FinanceActivityId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:finance-entity-id",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "FinanceEntityId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:finance-management-centre-id",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "FinanceManagementCentreId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:jira-project-code",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "JiraProjectCode"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:pm-programme",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "PmProgramme"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:pm-project-code",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "PmProjectCode"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:environment-name",
+            "Value": {
+              "Ref": "BillingEnvironmentName"
+            }
+          }
+        ],
+        "KeyPolicy": {
+          "Version": "2012-10-17",
+          "Id": "key-default-1",
+          "Statement": [
+            {
+              "Sid": "Enable IAM User Permissions",
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": [
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:root"
+                  },
+                  {
+                    "Ref": "deploymentRole"
+                  }
+                ]
+              },
+              "Action": [
+                "kms:*"
+              ],
+              "Resource": "*"
+            },
+            {
+              "Sid": "Allow access for Key Administrators",
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": [
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-DataSupport"
+                  },
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-Administrator"
+                  },
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-DataAdministrator"
+                  }
+                ]
+              },
+              "Action": [
+                "kms:Create*",
+                "kms:Describe*",
+                "kms:Enable*",
+                "kms:List*",
+                "kms:Put*",
+                "kms:Update*",
+                "kms:Revoke*",
+                "kms:Disable*",
+                "kms:Get*",
+                "kms:Delete*",
+                "kms:TagResource",
+                "kms:UntagResource",
+                "kms:ScheduleKeyDeletion",
+                "kms:CancelKeyDeletion"
+              ],
+              "Resource": "*"
+            },
+            {
+              "Sid": "Allow use of the key",
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": [
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-DataSupport"
+                  },
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-Administrator"
+                  },
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-DataAdministrator"
+                  }
+                ]
+              },
+              "Action": [
+                "kms:Encrypt",
+                "kms:Decrypt",
+                "kms:ReEncrypt*",
+                "kms:GenerateDataKey*",
+                "kms:DescribeKey"
+              ],
+              "Resource": "*"
+            },
+            {
+              "Sid": "Allow attachment of persistent resources",
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": [
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-DataSupport"
+                  },
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-Administrator"
+                  },
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-DataAdministrator"
+                  }
+                ]
+              },
+              "Action": [
+                "kms:CreateGrant",
+                "kms:ListGrants",
+                "kms:RevokeGrant"
+              ],
+              "Resource": "*",
+              "Condition": {
+                "Bool": {
+                  "kms:GrantIsForAWSResource": "true"
+                }
+              }
+            }
+          ]
+        },
+        "EnableKeyRotation": true
+      }
+    },
+    "DataopsDataKeyAlias": {
+      "Type": "AWS::KMS::Alias",
+      "Properties": {
+        "AliasName": "alias/rx-gbs-datalake-rds-dataops",
+        "TargetKeyId": {
+          "Ref": "DataopsDataKMSKey"
+        }
+      }
+    },
+    "ProcessingZoneKMSKey": {
+      "Type": "AWS::KMS::Key",
+      "Properties": {
+        "Description": "Key to encrypt the data under processing zone S3 bucket for GBS",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "rx-gbs-datalake-s3-processingzone"
+          },
+          {
+            "Key": "rx:billing:finance-activity-id",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "FinanceActivityId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:finance-entity-id",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "FinanceEntityId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:finance-management-centre-id",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "FinanceManagementCentreId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:jira-project-code",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "JiraProjectCode"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:pm-programme",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "PmProgramme"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:pm-project-code",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "PmProjectCode"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:environment-name",
+            "Value": {
+              "Ref": "BillingEnvironmentName"
+            }
+          }
+        ],
+        "KeyPolicy": {
+          "Version": "2012-10-17",
+          "Id": "key-default-1",
+          "Statement": [
+            {
+              "Sid": "Enable IAM User Permissions",
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": [
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:root"
+                  },
+                  {
+                    "Ref": "deploymentRole"
+                  }
+                ]
+              },
+              "Action": [
+                "kms:*"
+              ],
+              "Resource": "*"
+            },
+            {
+              "Sid": "Allow access for Key Administrators",
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": [
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-DataSupport"
+                  },
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-DataAdministrator"
+                  }
+                ]
+              },
+              "Action": [
+                "kms:Create*",
+                "kms:Describe*",
+                "kms:Enable*",
+                "kms:List*",
+                "kms:Put*",
+                "kms:Update*",
+                "kms:Revoke*",
+                "kms:Disable*",
+                "kms:Get*",
+                "kms:Delete*",
+                "kms:TagResource",
+                "kms:UntagResource",
+                "kms:ScheduleKeyDeletion",
+                "kms:CancelKeyDeletion"
+              ],
+              "Resource": "*"
+            },
+            {
+              "Sid": "Allow use of the key",
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": [
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-DataEngineer"
+                  },
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-DataDeveloperGeneral"
+                  },
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-DataDeveloperConfidential"
+                  },
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-DataDeveloperRestricted"
+                  },
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-DataConsumerGeneral"
+                  },
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-DataConsumerConfidential"
+                  },
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-DataConsumerRestricted"
+                  },
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:root"
+                  }
+                ]
+              },
+              "Action": [
+                "kms:Encrypt",
+                "kms:Decrypt",
+                "kms:ReEncrypt*",
+                "kms:GenerateDataKey*",
+                "kms:DescribeKey"
+              ],
+              "Resource": "*"
+            }
+          ]
+        }
+      }
+    },
+    "ProcessingZoneKeyAlias": {
+      "Type": "AWS::KMS::Alias",
+      "Properties": {
+        "AliasName": "alias/rx-gbs-datalake-s3-processingzone",
+        "TargetKeyId": {
+          "Ref": "ProcessingZoneKMSKey"
+        }
+      }
+    },
+    "RefinedzoneKMSKey": {
+      "Type": "AWS::KMS::Key",
+      "Properties": {
+        "Description": "Key to encrypt the data under refined zone S3 bucket for GBS",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "rx-gbs-datalake-s3-refinedzone"
+          },
+          {
+            "Key": "rx:billing:finance-activity-id",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "FinanceActivityId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:finance-entity-id",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "FinanceEntityId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:finance-management-centre-id",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "FinanceManagementCentreId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:jira-project-code",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "JiraProjectCode"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:pm-programme",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "PmProgramme"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:pm-project-code",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "PmProjectCode"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:environment-name",
+            "Value": {
+              "Ref": "BillingEnvironmentName"
+            }
+          }
+        ],
+        "KeyPolicy": {
+          "Version": "2012-10-17",
+          "Id": "key-default-1",
+          "Statement": [
+            {
+              "Sid": "Enable IAM User Permissions",
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": [
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:root"
+                  },
+                  {
+                    "Ref": "deploymentRole"
+                  }
+                ]
+              },
+              "Action": [
+                "kms:*"
+              ],
+              "Resource": "*"
+            },
+            {
+              "Sid": "Allow access for Key Administrators",
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": [
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-DataSupport"
+                  },
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-DataAdministrator"
+                  }
+                ]
+              },
+              "Action": [
+                "kms:Create*",
+                "kms:Describe*",
+                "kms:Enable*",
+                "kms:List*",
+                "kms:Put*",
+                "kms:Update*",
+                "kms:Revoke*",
+                "kms:Disable*",
+                "kms:Get*",
+                "kms:Delete*",
+                "kms:TagResource",
+                "kms:UntagResource",
+                "kms:ScheduleKeyDeletion",
+                "kms:CancelKeyDeletion"
+              ],
+              "Resource": "*"
+            },
+            {
+              "Sid": "Allow use of the key",
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": [
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-DataEngineer"
+                  },
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-DataDeveloperGeneral"
+                  },
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-DataDeveloperConfidential"
+                  },
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-DataDeveloperRestricted"
+                  },
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-DataConsumerGeneral"
+                  },
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-DataConsumerConfidential"
+                  },
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-DataConsumerRestricted"
+                  }
+                ]
+              },
+              "Action": [
+                "kms:Encrypt",
+                "kms:Decrypt",
+                "kms:ReEncrypt*",
+                "kms:GenerateDataKey*",
+                "kms:DescribeKey"
+              ],
+              "Resource": "*"
+            }
+          ]
+        }
+      }
+    },
+    "RefinedzoneKeyAlias": {
+      "Type": "AWS::KMS::Alias",
+      "Properties": {
+        "AliasName": "alias/rx-gbs-datalake-s3-refinedzone",
+        "TargetKeyId": {
+          "Ref": "RefinedzoneKMSKey"
+        }
+      }
+    },
+    "RawzoneKMSKey": {
+      "Type": "AWS::KMS::Key",
+      "Properties": {
+        "Description": "Key to encrypt the data under raw zone S3 bucket for GBS",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "rx-gbs-datalake-s3-rawzone"
+          },
+          {
+            "Key": "rx:billing:finance-activity-id",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "FinanceActivityId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:finance-entity-id",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "FinanceEntityId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:finance-management-centre-id",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "FinanceManagementCentreId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:jira-project-code",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "JiraProjectCode"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:pm-programme",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "PmProgramme"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:pm-project-code",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "PmProjectCode"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:environment-name",
+            "Value": {
+              "Ref": "BillingEnvironmentName"
+            }
+          }
+        ],
+        "KeyPolicy": {
+          "Version": "2012-10-17",
+          "Id": "key-default-1",
+          "Statement": [
+            {
+              "Sid": "Enable IAM User Permissions",
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": [
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:root"
+                  },
+                  {
+                    "Ref": "deploymentRole"
+                  }
+                ]
+              },
+              "Action": [
+                "kms:*"
+              ],
+              "Resource": "*"
+            },
+            {
+              "Sid": "Allow access for Key Administrators",
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": [
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-DataSupport"
+                  },
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-DataAdministrator"
+                  }
+                ]
+              },
+              "Action": [
+                "kms:Create*",
+                "kms:Describe*",
+                "kms:Enable*",
+                "kms:List*",
+                "kms:Put*",
+                "kms:Update*",
+                "kms:Revoke*",
+                "kms:Disable*",
+                "kms:Get*",
+                "kms:Delete*",
+                "kms:TagResource",
+                "kms:UntagResource",
+                "kms:ScheduleKeyDeletion",
+                "kms:CancelKeyDeletion"
+              ],
+              "Resource": "*"
+            },
+            {
+              "Sid": "Allow use of the key",
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": [
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-DataEngineer"
+                  },
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-DataDeveloperGeneral"
+                  },
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-DataDeveloperConfidential"
+                  },
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-DataDeveloperRestricted"
+                  },
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-DataConsumerGeneral"
+                  },
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-DataConsumerConfidential"
+                  },
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-DataConsumerRestricted"
+                  }
+                ]
+              },
+              "Action": [
+                "kms:Encrypt",
+                "kms:Decrypt",
+                "kms:ReEncrypt*",
+                "kms:GenerateDataKey*",
+                "kms:DescribeKey"
+              ],
+              "Resource": "*"
+            }
+          ]
+        }
+      }
+    },
+    "RawzoneKeyAlias": {
+      "Type": "AWS::KMS::Alias",
+      "Properties": {
+        "AliasName": "alias/rx-gbs-datalake-s3-rawzone",
+        "TargetKeyId": {
+          "Ref": "RawzoneKMSKey"
+        }
+      }
+    },
+    "LandingzoneKMSKey": {
+      "Type": "AWS::KMS::Key",
+      "Properties": {
+        "Description": "Key to encrypt the data under landing zone S3 bucket for GBS",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "rx-gbs-datalake-s3-landingzone"
+          },
+          {
+            "Key": "rx:billing:finance-activity-id",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "FinanceActivityId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:finance-entity-id",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "FinanceEntityId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:finance-management-centre-id",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "FinanceManagementCentreId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:jira-project-code",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "JiraProjectCode"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:pm-programme",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "PmProgramme"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:pm-project-code",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "PmProjectCode"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:environment-name",
+            "Value": {
+              "Ref": "BillingEnvironmentName"
+            }
+          }
+        ],
+        "KeyPolicy": {
+          "Version": "2012-10-17",
+          "Id": "key-default-1",
+          "Statement": [
+            {
+              "Sid": "Enable IAM User Permissions",
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": [
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:root"
+                  },
+                  {
+                    "Ref": "deploymentRole"
+                  }
+                ]
+              },
+              "Action": [
+                "kms:*"
+              ],
+              "Resource": "*"
+            },
+            {
+              "Sid": "Allow access for Key Administrators",
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": [
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-DataSupport"
+                  },
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-DataAdministrator"
+                  }
+                ]
+              },
+              "Action": [
+                "kms:Create*",
+                "kms:Describe*",
+                "kms:Enable*",
+                "kms:List*",
+                "kms:Put*",
+                "kms:Update*",
+                "kms:Revoke*",
+                "kms:Disable*",
+                "kms:Get*",
+                "kms:Delete*",
+                "kms:TagResource",
+                "kms:UntagResource",
+                "kms:ScheduleKeyDeletion",
+                "kms:CancelKeyDeletion"
+              ],
+              "Resource": "*"
+            },
+            {
+              "Sid": "Allow use of the key",
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": [
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-DataEngineer"
+                  },
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-DataDeveloperGeneral"
+                  },
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-DataDeveloperConfidential"
+                  },
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-DataDeveloperRestricted"
+                  },
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-DataConsumerGeneral"
+                  },
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-DataConsumerConfidential"
+                  },
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-DataConsumerRestricted"
+                  }
+                ]
+              },
+              "Action": [
+                "kms:Encrypt",
+                "kms:Decrypt",
+                "kms:ReEncrypt*",
+                "kms:GenerateDataKey*",
+                "kms:DescribeKey"
+              ],
+              "Resource": "*"
+            }
+          ]
+        }
+      }
+    },
+    "LandingoneKeyAlias": {
+      "Type": "AWS::KMS::Alias",
+      "Properties": {
+        "AliasName": "alias/rx-gbs-datalake-s3-landingzone",
+        "TargetKeyId": {
+          "Ref": "LandingzoneKMSKey"
+        }
+      }
+    },
+    "LogsKMSKey": {
+      "Type": "AWS::KMS::Key",
+      "Properties": {
+        "Description": "rx-gbs-datalake-logs KMs key",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "rx-gbs-datalake-logs"
+          },
+          {
+            "Key": "rx:billing:finance-activity-id",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "FinanceActivityId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:finance-entity-id",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "FinanceEntityId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:finance-management-centre-id",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "FinanceManagementCentreId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:jira-project-code",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "JiraProjectCode"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:pm-programme",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "PmProgramme"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:pm-project-code",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "PmProjectCode"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:environment-name",
+            "Value": {
+              "Ref": "BillingEnvironmentName"
+            }
+          }
+        ],
+        "KeyPolicy": {
+          "Version": "2012-10-17",
+          "Id": "key-default-1",
+          "Statement": [
+            {
+              "Sid": "Enable IAM User Permissions",
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": [
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:root"
+                  },
+                  {
+                    "Ref": "deploymentRole"
+                  }
+                ]
+              },
+              "Action": [
+                "kms:*"
+              ],
+              "Resource": "*"
+            },
+            {
+              "Sid": "Allow access for Key Administrators",
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": [
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-DataSupport"
+                  },
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-DataAdministrator"
+                  }
+                ]
+              },
+              "Action": [
+                "kms:Create*",
+                "kms:Describe*",
+                "kms:Enable*",
+                "kms:List*",
+                "kms:Put*",
+                "kms:Update*",
+                "kms:Revoke*",
+                "kms:Disable*",
+                "kms:Get*",
+                "kms:Delete*",
+                "kms:TagResource",
+                "kms:UntagResource",
+                "kms:ScheduleKeyDeletion",
+                "kms:CancelKeyDeletion"
+              ],
+              "Resource": "*"
+            },
+            {
+              "Sid": "Allow use of the key",
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": [
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-DataEngineer"
+                  },
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-DataDeveloperGeneral"
+                  },
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-DataDeveloperConfidential"
+                  },
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-DataDeveloperRestricted"
+                  },
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-DataConsumerGeneral"
+                  },
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-DataConsumerConfidential"
+                  },
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-DataConsumerRestricted"
+                  }
+                ]
+              },
+              "Action": [
+                "kms:Encrypt",
+                "kms:Decrypt",
+                "kms:ReEncrypt*",
+                "kms:GenerateDataKey*",
+                "kms:DescribeKey"
+              ],
+              "Resource": "*"
+            }
+          ]
+        }
+      }
+    },
+    "LogsKeyAlias": {
+      "Type": "AWS::KMS::Alias",
+      "Properties": {
+        "AliasName": "alias/rx-gbs-datalake-logs",
+        "TargetKeyId": {
+          "Ref": "LogsKMSKey"
+        }
+      }
+    },
+    "NonAnonymizedKMSKey": {
+      "Type": "AWS::KMS::Key",
+      "Properties": {
+        "Description": "The key will encrypt the non anonymized bucket",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "rx-gbs-datalake-s3-non-anonymized-data"
+          },
+          {
+            "Key": "rx:billing:finance-activity-id",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "FinanceActivityId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:finance-entity-id",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "FinanceEntityId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:finance-management-centre-id",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "FinanceManagementCentreId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:jira-project-code",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "JiraProjectCode"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:pm-programme",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "PmProgramme"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:pm-project-code",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "PmProjectCode"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:environment-name",
+            "Value": {
+              "Ref": "BillingEnvironmentName"
+            }
+          }
+        ],
+        "KeyPolicy": {
+          "Version": "2012-10-17",
+          "Id": "key-default-1",
+          "Statement": [
+            {
+              "Sid": "Enable IAM User Permissions",
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": [
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:root"
+                  },
+                  {
+                    "Ref": "deploymentRole"
+                  }
+                ]
+              },
+              "Action": [
+                "kms:*"
+              ],
+              "Resource": "*"
+            },
+            {
+              "Sid": "Allow access for Key Administrators",
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": [
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-DataSupport"
+                  },
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-DataAdministrator"
+                  }
+                ]
+              },
+              "Action": [
+                "kms:Create*",
+                "kms:Describe*",
+                "kms:Enable*",
+                "kms:List*",
+                "kms:Put*",
+                "kms:Update*",
+                "kms:Revoke*",
+                "kms:Disable*",
+                "kms:Get*",
+                "kms:Delete*",
+                "kms:TagResource",
+                "kms:UntagResource",
+                "kms:ScheduleKeyDeletion",
+                "kms:CancelKeyDeletion"
+              ],
+              "Resource": "*"
+            }
+          ]
+        }
+      }
+    },
+    "NonAnonymizedKeyAlias": {
+      "Type": "AWS::KMS::Alias",
+      "Properties": {
+        "AliasName": "alias/rx-gbs-datalake-s3-non-anonymized-data",
+        "TargetKeyId": {
+          "Ref": "NonAnonymizedKMSKey"
+        }
+      }
+    },
+    "SSMKMSKey": {
+      "Type": "AWS::KMS::Key",
+      "Properties": {
+        "Description": "Key to encrypt the SSM parameters",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "rx-gbs-datalake-ssm"
+          },
+          {
+            "Key": "rx:billing:finance-activity-id",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "FinanceActivityId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:finance-entity-id",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "FinanceEntityId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:finance-management-centre-id",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "FinanceManagementCentreId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:jira-project-code",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "JiraProjectCode"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:pm-programme",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "PmProgramme"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:pm-project-code",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "PmProjectCode"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:environment-name",
+            "Value": {
+              "Ref": "BillingEnvironmentName"
+            }
+          }
+        ],
+        "KeyPolicy": {
+          "Version": "2012-10-17",
+          "Id": "key-consolepolicy-3",
+          "Statement": [
+            {
+              "Sid": "Enable IAM User Permissions",
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": [
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:root"
+                  },
+                  {
+                    "Ref": "deploymentRole"
+                  }
+                ]
+              },
+              "Action": [
+                "kms:*"
+              ],
+              "Resource": "*"
+            },
+            {
+              "Sid": "Allow access for Key Administrators",
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": [
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-DataSupport"
+                  },
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-DataAdministrator"
+                  }
+                ]
+              },
+              "Action": [
+                "kms:Create*",
+                "kms:Describe*",
+                "kms:Enable*",
+                "kms:List*",
+                "kms:Put*",
+                "kms:Update*",
+                "kms:Revoke*",
+                "kms:Disable*",
+                "kms:Get*",
+                "kms:Delete*",
+                "kms:TagResource",
+                "kms:UntagResource",
+                "kms:ScheduleKeyDeletion",
+                "kms:CancelKeyDeletion"
+              ],
+              "Resource": "*"
+            }
+          ]
+        }
+      }
+    },
+    "SSMKeyAlias": {
+      "Type": "AWS::KMS::Alias",
+      "Properties": {
+        "AliasName": "alias/rx-gbs-datalake-ssm",
+        "TargetKeyId": {
+          "Ref": "SSMKMSKey"
+        }
+      }
+    },
+    "DMSKMSKey": {
+      "Type": "AWS::KMS::Key",
+      "Properties": {
+        "Description": "Key for DMS",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "rx-gbs-datalake-dms"
+          },
+          {
+            "Key": "rx:billing:finance-activity-id",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "FinanceActivityId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:finance-entity-id",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "FinanceEntityId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:finance-management-centre-id",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "FinanceManagementCentreId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:jira-project-code",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "JiraProjectCode"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:pm-programme",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "PmProgramme"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:pm-project-code",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "PmProjectCode"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:environment-name",
+            "Value": {
+              "Ref": "BillingEnvironmentName"
+            }
+          }
+        ],
+        "KeyPolicy": {
+          "Version": "2012-10-17",
+          "Id": "key-consolepolicy-3",
+          "Statement": [
+            {
+              "Sid": "Allow access through DMS for all principals in the account that are authorized to use DMS",
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": "*"
+              },
+              "Action": [
+                "kms:Encrypt",
+                "kms:Decrypt",
+                "kms:ReEncrypt*",
+                "kms:GenerateDataKey*",
+                "kms:CreateGrant",
+                "kms:ListGrants",
+                "kms:DescribeKey"
+              ],
+              "Resource": "*",
+              "Condition": {
+                "StringEquals": {
+                  "kms:CallerAccount": {
+                    "Ref": "AWS::AccountId"
+                  },
+                  "kms:ViaService": {
+                    "Fn::Sub": "dms.${AWS::Region}.amazonaws.com"
+                  }
+                }
+              }
+            },
+            {
+              "Sid": "Enable IAM User Permissions",
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": [
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:root"
+                  },
+                  {
+                    "Ref": "deploymentRole"
+                  }
+                ]
+              },
+              "Action": [
+                "kms:*"
+              ],
+              "Resource": "*"
+            },
+            {
+              "Sid": "Allow access for Key Administrators",
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": [
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-DataSupport"
+                  },
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-DataAdministrator"
+                  }
+                ]
+              },
+              "Action": [
+                "kms:Create*",
+                "kms:Describe*",
+                "kms:Enable*",
+                "kms:List*",
+                "kms:Put*",
+                "kms:Update*",
+                "kms:Revoke*",
+                "kms:Disable*",
+                "kms:Get*",
+                "kms:Delete*",
+                "kms:TagResource",
+                "kms:UntagResource",
+                "kms:ScheduleKeyDeletion",
+                "kms:CancelKeyDeletion"
+              ],
+              "Resource": "*"
+            }
+          ]
+        }
+      }
+    },
+    "DMSKeyAlias": {
+      "Type": "AWS::KMS::Alias",
+      "Properties": {
+        "AliasName": "alias/rx-gbs-datalake-dms",
+        "TargetKeyId": {
+          "Ref": "DMSKMSKey"
+        }
+      }
+    },
+    "AWSKMSKey": {
+      "Condition": "IsNotProd",
+      "Type": "AWS::KMS::Key",
+      "Properties": {
+        "Description": "Key for DMS",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "rx-gbs-datalake-s3-kms"
+          },
+          {
+            "Key": "rx:billing:finance-activity-id",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "FinanceActivityId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:finance-entity-id",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "FinanceEntityId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:finance-management-centre-id",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "FinanceManagementCentreId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:jira-project-code",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "JiraProjectCode"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:pm-programme",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "PmProgramme"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:pm-project-code",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "PmProjectCode"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:environment-name",
+            "Value": {
+              "Ref": "BillingEnvironmentName"
+            }
+          }
+        ],
+        "KeyPolicy": {
+          "Version": "2012-10-17",
+          "Id": "key-consolepolicy-3",
+          "Statement": [
+            {
+              "Sid": "Enable IAM User Permissions",
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": [
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:root"
+                  },
+                  {
+                    "Ref": "deploymentRole"
+                  }
+                ]
+              },
+              "Action": "kms:*",
+              "Resource": "*"
+            },
+            {
+              "Sid": "Allow use of the key",
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": [
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-DataEngineer"
+                  },
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-DataDeveloperGeneral"
+                  },
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-DataDeveloperConfidential"
+                  },
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-DataDeveloperRestricted"
+                  },
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-DataConsumerGeneral"
+                  },
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-DataConsumerConfidential"
+                  },
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-DataConsumerRestricted"
+                  },
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:root"
+                  }
+                ]
+              },
+              "Action": [
+                "kms:Encrypt",
+                "kms:Decrypt",
+                "kms:ReEncrypt*",
+                "kms:GenerateDataKey*",
+                "kms:DescribeKey"
+              ],
+              "Resource": "*"
+            },
+            {
+              "Sid": "Allow attachment of persistent resources",
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": [
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-DataEngineer"
+                  },
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-DataDeveloperGeneral"
+                  },
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-DataDeveloperConfidential"
+                  },
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-DataDeveloperRestricted"
+                  }
+                ]
+              },
+              "Action": [
+                "kms:CreateGrant",
+                "kms:ListGrants",
+                "kms:RevokeGrant"
+              ],
+              "Resource": "*",
+              "Condition": {
+                "Bool": {
+                  "kms:GrantIsForAWSResource": "true"
+                }
+              }
+            },
+            {
+              "Sid": "Allow access for Key Administrators",
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": [
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-DataSupport"
+                  },
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/ADFS-DataAdministrator"
+                  },
+                  {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/rx-gbs-datalake-EMR-role"
+                  }
+                ]
+              },
+              "Action": [
+                "kms:Create*",
+                "kms:Describe*",
+                "kms:Enable*",
+                "kms:List*",
+                "kms:Put*",
+                "kms:Update*",
+                "kms:Revoke*",
+                "kms:Disable*",
+                "kms:Get*",
+                "kms:Delete*",
+                "kms:TagResource",
+                "kms:UntagResource",
+                "kms:ScheduleKeyDeletion",
+                "kms:CancelKeyDeletion"
+              ],
+              "Resource": "*"
+            }
+          ]
+        }
+      }
+    },
+    "AWSKeyAlias": {
+      "Condition": "IsNotProd",
+      "Type": "AWS::KMS::Alias",
+      "Properties": {
+        "AliasName": "alias/rx-gbs-datalake-s3-kms",
+        "TargetKeyId": {
+          "Ref": "AWSKMSKey"
+        }
+      }
+    },
+    "LandingS3Bucket": {
+      "Type": "AWS::S3::Bucket",
+      "Description": "Creating Amazon S3 bucket from CloudFormation",
+      "Properties": {
+        "BucketName": {
+          "Fn::Sub": "rx-gbs-datalake-landingzone-${BillingEnvironmentName}"
+        },
+        "AccessControl": "Private",
+        "PublicAccessBlockConfiguration": {
+          "BlockPublicAcls": true,
+          "BlockPublicPolicy": true,
+          "IgnorePublicAcls": true,
+          "RestrictPublicBuckets": true
+        },
+        "BucketEncryption": {
+          "ServerSideEncryptionConfiguration": [
+            {
+              "ServerSideEncryptionByDefault": {
+                "SSEAlgorithm": "aws:kms",
+                "KMSMasterKeyID": {
+                  "Fn::GetAtt": [
+                    "LandingzoneKMSKey",
+                    "Arn"
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": {
+              "Fn::Sub": "rx-gbs-datalake-landingzone-${BillingEnvironmentName}"
+            }
+          },
+          {
+            "Key": "rx:billing:finance-activity-id",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "FinanceActivityId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:finance-entity-id",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "FinanceEntityId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:finance-management-centre-id",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "FinanceManagementCentreId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:jira-project-code",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "JiraProjectCode"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:pm-programme",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "PmProgramme"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:pm-project-code",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "PmProjectCode"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:environment-name",
+            "Value": {
+              "Ref": "BillingEnvironmentName"
+            }
+          }
+        ]
+      }
+    },
+    "RawS3Bucket": {
+      "Type": "AWS::S3::Bucket",
+      "Description": "Creating Amazon S3 bucket from CloudFormation",
+      "Properties": {
+        "BucketName": {
+          "Fn::Sub": "rx-gbs-datalake-rawzone-${BillingEnvironmentName}"
+        },
+        "AccessControl": "Private",
+        "PublicAccessBlockConfiguration": {
+          "BlockPublicAcls": true,
+          "BlockPublicPolicy": true,
+          "IgnorePublicAcls": true,
+          "RestrictPublicBuckets": true
+        },
+        "BucketEncryption": {
+          "ServerSideEncryptionConfiguration": [
+            {
+              "ServerSideEncryptionByDefault": {
+                "SSEAlgorithm": "aws:kms",
+                "KMSMasterKeyID": {
+                  "Fn::GetAtt": [
+                    "RawzoneKMSKey",
+                    "Arn"
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": {
+              "Fn::Sub": "rx-gbs-datalake-rawzone-${BillingEnvironmentName}"
+            }
+          },
+          {
+            "Key": "rx:billing:finance-activity-id",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "FinanceActivityId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:finance-entity-id",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "FinanceEntityId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:finance-management-centre-id",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "FinanceManagementCentreId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:jira-project-code",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "JiraProjectCode"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:pm-programme",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "PmProgramme"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:pm-project-code",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "PmProjectCode"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:environment-name",
+            "Value": {
+              "Ref": "BillingEnvironmentName"
+            }
+          }
+        ]
+      }
+    },
+    "RefinedS3Bucket": {
+      "Type": "AWS::S3::Bucket",
+      "Description": "Creating Amazon S3 bucket from CloudFormation",
+      "Properties": {
+        "BucketName": {
+          "Fn::Sub": "rx-gbs-datalake-refinedzone-${BillingEnvironmentName}"
+        },
+        "AccessControl": "Private",
+        "PublicAccessBlockConfiguration": {
+          "BlockPublicAcls": true,
+          "BlockPublicPolicy": true,
+          "IgnorePublicAcls": true,
+          "RestrictPublicBuckets": true
+        },
+        "BucketEncryption": {
+          "ServerSideEncryptionConfiguration": [
+            {
+              "ServerSideEncryptionByDefault": {
+                "SSEAlgorithm": "aws:kms",
+                "KMSMasterKeyID": {
+                  "Fn::GetAtt": [
+                    "RefinedzoneKMSKey",
+                    "Arn"
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": {
+              "Fn::Sub": "rx-gbs-datalake-refinedzone-${BillingEnvironmentName}"
+            }
+          },
+          {
+            "Key": "rx:billing:finance-activity-id",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "FinanceActivityId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:finance-entity-id",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "FinanceEntityId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:finance-management-centre-id",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "FinanceManagementCentreId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:jira-project-code",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "JiraProjectCode"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:pm-programme",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "PmProgramme"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:pm-project-code",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "PmProjectCode"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:environment-name",
+            "Value": {
+              "Ref": "BillingEnvironmentName"
+            }
+          }
+        ]
+      }
+    },
+    "ProcessingS3Bucket": {
+      "Type": "AWS::S3::Bucket",
+      "Description": "Creating Amazon S3 bucket from CloudFormation",
+      "Properties": {
+        "BucketName": {
+          "Fn::Sub": "rx-gbs-datalake-processingzone-${BillingEnvironmentName}"
+        },
+        "AccessControl": "Private",
+        "PublicAccessBlockConfiguration": {
+          "BlockPublicAcls": true,
+          "BlockPublicPolicy": true,
+          "IgnorePublicAcls": true,
+          "RestrictPublicBuckets": true
+        },
+        "BucketEncryption": {
+          "ServerSideEncryptionConfiguration": [
+            {
+              "ServerSideEncryptionByDefault": {
+                "SSEAlgorithm": "aws:kms",
+                "KMSMasterKeyID": {
+                  "Fn::GetAtt": [
+                    "ProcessingZoneKMSKey",
+                    "Arn"
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        "NotificationConfiguration": {
+          "LambdaConfigurations": [
+            {
+              "Fn::If": [
+                "WithProcessingZoneNotifications",
+                {
+                  "Event": "s3:ObjectCreated:*",
+                  "Filter": {
+                    "S3Key": {
+                      "Rules": [
+                        {
+                          "Name": "prefix",
+                          "Value": "config/etl_job_config_csv/"
+                        },
+                        {
+                          "Name": "suffix",
+                          "Value": ".csv"
+                        }
+                      ]
+                    }
+                  },
+                  "Function": {
+                    "Fn::ImportValue": "ETLJobConfigValidationLambdaARN"
+                  }
+                },
+                {
+                  "Ref": "AWS::NoValue"
+                }
+              ]
+            }
+          ]
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": {
+              "Fn::Sub": "rx-gbs-datalake-processingzone-${BillingEnvironmentName}"
+            }
+          },
+          {
+            "Key": "rx:billing:finance-activity-id",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "FinanceActivityId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:finance-entity-id",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "FinanceEntityId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:finance-management-centre-id",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "FinanceManagementCentreId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:jira-project-code",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "JiraProjectCode"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:pm-programme",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "PmProgramme"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:pm-project-code",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "PmProjectCode"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:environment-name",
+            "Value": {
+              "Ref": "BillingEnvironmentName"
+            }
+          }
+        ]
+      }
+    },
+    "LogsS3Bucket": {
+      "Type": "AWS::S3::Bucket",
+      "Description": "Creating Amazon S3 bucket from CloudFormation",
+      "Properties": {
+        "BucketName": {
+          "Fn::Sub": "rx-gbs-datalake-logs-${BillingEnvironmentName}"
+        },
+        "AccessControl": "Private",
+        "PublicAccessBlockConfiguration": {
+          "BlockPublicAcls": true,
+          "BlockPublicPolicy": true,
+          "IgnorePublicAcls": true,
+          "RestrictPublicBuckets": true
+        },
+        "BucketEncryption": {
+          "ServerSideEncryptionConfiguration": [
+            {
+              "ServerSideEncryptionByDefault": {
+                "SSEAlgorithm": "aws:kms",
+                "KMSMasterKeyID": {
+                  "Fn::GetAtt": [
+                    "LogsKMSKey",
+                    "Arn"
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": {
+              "Fn::Sub": "rx-gbs-datalake-logs-${BillingEnvironmentName}"
+            }
+          },
+          {
+            "Key": "rx:billing:finance-activity-id",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "FinanceActivityId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:finance-entity-id",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "FinanceEntityId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:finance-management-centre-id",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "FinanceManagementCentreId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:jira-project-code",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "JiraProjectCode"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:pm-programme",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "PmProgramme"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:pm-project-code",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "PmProjectCode"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:environment-name",
+            "Value": {
+              "Ref": "BillingEnvironmentName"
+            }
+          }
+        ]
+      }
+    },
+    "NonAnonymizedS3Bucket": {
+      "Type": "AWS::S3::Bucket",
+      "Description": "Creating Amazon S3 bucket from CloudFormation",
+      "Properties": {
+        "BucketName": {
+          "Fn::Sub": "rx-gbs-datalake-non-anonymized-data-${BillingEnvironmentName}"
+        },
+        "AccessControl": "Private",
+        "PublicAccessBlockConfiguration": {
+          "BlockPublicAcls": true,
+          "BlockPublicPolicy": true,
+          "IgnorePublicAcls": true,
+          "RestrictPublicBuckets": true
+        },
+        "BucketEncryption": {
+          "ServerSideEncryptionConfiguration": [
+            {
+              "ServerSideEncryptionByDefault": {
+                "SSEAlgorithm": "aws:kms",
+                "KMSMasterKeyID": {
+                  "Fn::GetAtt": [
+                    "NonAnonymizedKMSKey",
+                    "Arn"
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": {
+              "Fn::Sub": "rx-gbs-datalake-non-anonymized-data-${BillingEnvironmentName}"
+            }
+          },
+          {
+            "Key": "rx:billing:finance-activity-id",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "FinanceActivityId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:finance-entity-id",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "FinanceEntityId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:finance-management-centre-id",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "FinanceManagementCentreId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:jira-project-code",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "JiraProjectCode"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:pm-programme",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "PmProgramme"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:pm-project-code",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "PmProjectCode"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:environment-name",
+            "Value": {
+              "Ref": "BillingEnvironmentName"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "Outputs": {
+    "LandingS3Bucket": {
+      "Description": "LandingZone Bucket Created using this template.",
+      "Value": {
+        "Ref": "LandingS3Bucket"
+      },
+      "Export": {
+        "Name": {
+          "Fn::Sub": "landingzone-bucket-${BillingEnvironmentName}"
+        }
+      }
+    },
+    "RawS3Bucket": {
+      "Description": "RawZone Bucket Created using this template.",
+      "Value": {
+        "Ref": "RawS3Bucket"
+      },
+      "Export": {
+        "Name": {
+          "Fn::Sub": "rawzone-bucket-${BillingEnvironmentName}"
+        }
+      }
+    },
+    "RefinedS3Bucket": {
+      "Description": "RefinedZone Bucket Created using this template.",
+      "Value": {
+        "Ref": "RefinedS3Bucket"
+      },
+      "Export": {
+        "Name": {
+          "Fn::Sub": "refinedzone-bucket-${BillingEnvironmentName}"
+        }
+      }
+    },
+    "ProcessingS3Bucket": {
+      "Description": "ProcessingZone Bucket Created using this template.",
+      "Value": {
+        "Ref": "ProcessingS3Bucket"
+      },
+      "Export": {
+        "Name": {
+          "Fn::Sub": "processingzone-bucket-${BillingEnvironmentName}"
+        }
+      }
+    },
+    "LogsS3Bucket": {
+      "Description": "Logs Bucket Created using this template.",
+      "Value": {
+        "Ref": "LogsS3Bucket"
+      },
+      "Export": {
+        "Name": {
+          "Fn::Sub": "logs-bucket-${BillingEnvironmentName}"
+        }
+      }
+    },
+    "NonAnonymizedS3Bucket": {
+      "Description": "NonAnonymized Bucket Created using this template.",
+      "Value": {
+        "Ref": "NonAnonymizedS3Bucket"
+      },
+      "Export": {
+        "Name": {
+          "Fn::Sub": "non-anonymized-bucket-${BillingEnvironmentName}"
+        }
+      }
+    },
+    "DMSKMSKeyOutput": {
+      "Description": "DMS KMS Key created using this template",
+      "Value": {
+        "Fn::GetAtt": [
+          "DMSKMSKey",
+          "Arn"
+        ]
+      },
+      "Export": {
+        "Name": {
+          "Fn::Sub": "dms-kms-key-arn-${BillingEnvironmentName}"
+        }
+      }
+    },
+    "ProcessingZoneKMSKeyOutput": {
+      "Description": "ProcessingZone KMS Key created using this template",
+      "Value": {
+        "Fn::GetAtt": [
+          "ProcessingZoneKMSKey",
+          "Arn"
+        ]
+      },
+      "Export": {
+        "Name": {
+          "Fn::Sub": "processing-zone-kms-key-arn-${BillingEnvironmentName}"
+        }
+      }
+    },
+    "RefinedzoneKMSKeyOutput": {
+      "Description": "RefinedZone KMS Key created using this template",
+      "Value": {
+        "Fn::GetAtt": [
+          "RefinedzoneKMSKey",
+          "Arn"
+        ]
+      },
+      "Export": {
+        "Name": {
+          "Fn::Sub": "refined-zone-kms-key-arn-${BillingEnvironmentName}"
+        }
+      }
+    },
+    "RawzoneKMSKeyOutput": {
+      "Description": "RawZone KMS Key created using this template",
+      "Value": {
+        "Fn::GetAtt": [
+          "RawzoneKMSKey",
+          "Arn"
+        ]
+      },
+      "Export": {
+        "Name": {
+          "Fn::Sub": "raw-zone-kms-key-arn-${BillingEnvironmentName}"
+        }
+      }
+    },
+    "LandingzoneKMSKeyOutput": {
+      "Description": "LandingZone KMS Key created using this template",
+      "Value": {
+        "Fn::GetAtt": [
+          "LandingzoneKMSKey",
+          "Arn"
+        ]
+      },
+      "Export": {
+        "Name": {
+          "Fn::Sub": "landing-zone-kms-key-arn-${BillingEnvironmentName}"
+        }
+      }
+    },
+    "LogsKMSKeyOutput": {
+      "Description": "Logs KMS Key created using this template",
+      "Value": {
+        "Fn::GetAtt": [
+          "LogsKMSKey",
+          "Arn"
+        ]
+      },
+      "Export": {
+        "Name": {
+          "Fn::Sub": "logs-kms-key-arn-${BillingEnvironmentName}"
+        }
+      }
+    },
+    "NonAnonymizedKMSKeyOutput": {
+      "Description": "NonAnonymized KMS Key created using this template",
+      "Value": {
+        "Fn::GetAtt": [
+          "NonAnonymizedKMSKey",
+          "Arn"
+        ]
+      },
+      "Export": {
+        "Name": {
+          "Fn::Sub": "non-anonymized-kms-key-arn-${BillingEnvironmentName}"
+        }
+      }
+    },
+    "SSMKMSKeyOutput": {
+      "Description": "SSM KMS Key created using this template",
+      "Value": {
+        "Fn::GetAtt": [
+          "SSMKMSKey",
+          "Arn"
+        ]
+      },
+      "Export": {
+        "Name": {
+          "Fn::Sub": "ssm-kms-key-arn-${BillingEnvironmentName}"
+        }
+      }
+    },
+    "AWSKMSKeyOutput": {
+      "Condition": "IsNotProd",
+      "Description": "S3 KMS Key created using this template",
+      "Value": {
+        "Fn::GetAtt": [
+          "AWSKMSKey",
+          "Arn"
+        ]
+      },
+      "Export": {
+        "Name": {
+          "Fn::Sub": "aws-kms-key-arn-${BillingEnvironmentName}"
+        }
+      }
+    }
+  }
+}

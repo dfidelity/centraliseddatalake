@@ -1,0 +1,742 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Template for creating basic resources",
+  "Parameters": {
+    "BillingEnvironmentName": {
+      "AllowedPattern": "[a-zA-Z0-9]*",
+      "Default": "dev",
+      "Description": "The target environment in which the stack is being created",
+      "MinLength": 2,
+      "Type": "String"
+    },
+    "EDWJobCompleteSNSArn": {
+      "Description": "EDW job complete SNS arn",
+      "Type": "String"
+    },
+    "LogsBucketName": {
+      "Description": "Logs bucket name",
+      "Type": "String"
+    },
+    "LogsBucketKMSKeyArn": {
+      "Description": "Logs bucket KMS key arn",
+      "Type": "String"
+    },
+    "LambdaServiceRoleArn": {
+      "Description": "Lambda service role arn",
+      "Type": "String"
+    },
+    "CodeBucketName": {
+      "Description": "Code bucket name",
+      "Type": "String"
+    }
+  },
+  "Mappings": {
+    "General": {
+      "Tags": {
+        "FinanceActivityId": "8000",
+        "FinanceEntityId": "0092",
+        "FinanceManagementCentreId": "99440",
+        "JiraProjectCode": "RDL",
+        "PmProgramme": "platform",
+        "PmProjectCode": "n/a"
+      }
+    }
+  },
+  "Conditions": {
+    "IsProd": {
+      "Fn::Equals": [
+        {
+          "Ref": "AWS::AccountId"
+        },
+        "767030707495"
+      ]
+    },
+    "IsNotProd": {
+      "Fn::Not": [
+        {
+          "Condition": "IsProd"
+        }
+      ]
+    }
+  },
+  "Resources": {
+    "DropCreateSalesOrderRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "RoleName": "DropCreateSalesOrderRole",
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "states.amazonaws.com"
+              }
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": "DropCreateSalesOrder-AthenaStartQueryExecutionScopedAccessPolicy",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "athena:startQueryExecution",
+                    "athena:getDataCatalog",
+                    "athena:GetQueryExecution"
+                  ],
+                  "Resource": [
+                    {
+                      "Fn::Sub": "arn:aws:athena:eu-west-1:${AWS::AccountId}:workgroup/primary"
+                    },
+                    {
+                      "Fn::Sub": "arn:aws:athena:eu-west-1:${AWS::AccountId}:datacatalog/*"
+                    }
+                  ]
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "s3:GetBucketLocation",
+                    "s3:GetObject",
+                    "s3:ListBucket",
+                    "s3:ListBucketMultipartUploads",
+                    "s3:ListMultipartUploadParts",
+                    "s3:AbortMultipartUpload",
+                    "s3:CreateBucket",
+                    "s3:PutObject"
+                  ],
+                  "Resource": [
+                    "arn:aws:s3:::*"
+                  ]
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "glue:CreateDatabase",
+                    "glue:GetDatabase",
+                    "glue:GetDatabases",
+                    "glue:UpdateDatabase",
+                    "glue:DeleteDatabase",
+                    "glue:CreateTable",
+                    "glue:UpdateTable",
+                    "glue:GetTable",
+                    "glue:GetTables",
+                    "glue:DeleteTable",
+                    "glue:BatchDeleteTable",
+                    "glue:BatchCreatePartition",
+                    "glue:CreatePartition",
+                    "glue:UpdatePartition",
+                    "glue:GetPartition",
+                    "glue:GetPartitions",
+                    "glue:BatchGetPartition",
+                    "glue:DeletePartition",
+                    "glue:BatchDeletePartition"
+                  ],
+                  "Resource": [
+                    {
+                      "Fn::Sub": "arn:aws:glue:eu-west-1:${AWS::AccountId}:catalog"
+                    },
+                    {
+                      "Fn::Sub": "arn:aws:glue:eu-west-1:${AWS::AccountId}:database/*"
+                    },
+                    {
+                      "Fn::Sub": "arn:aws:glue:eu-west-1:${AWS::AccountId}:table/*"
+                    },
+                    {
+                      "Fn::Sub": "arn:aws:glue:eu-west-1:${AWS::AccountId}:userDefinedFunction/*"
+                    }
+                  ]
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "lakeformation:GetDataAccess"
+                  ],
+                  "Resource": [
+                    "*"
+                  ]
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "logs:CreateLogDelivery",
+                    "logs:GetLogDelivery",
+                    "logs:UpdateLogDelivery",
+                    "logs:DeleteLogDelivery",
+                    "logs:ListLogDeliveries",
+                    "logs:PutLogEvents",
+                    "logs:PutResourcePolicy",
+                    "logs:DescribeResourcePolicies",
+                    "logs:DescribeLogGroups"
+                  ],
+                  "Resource": "*"
+                }
+              ]
+            }
+          },
+          {
+            "PolicyName": "S3FullAccessToGBSDatalakeLogs",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Sid": "VisualEditor0",
+                  "Effect": "Allow",
+                  "Action": "s3:*",
+                  "Resource": [
+                    {
+                      "Fn::Sub": "arn:aws:s3:::${LogsBucketName}"
+                    },
+                    {
+                      "Fn::Sub": "arn:aws:s3:::${LogsBucketName}/*"
+                    }
+                  ]
+                },
+                {
+                  "Fn::If": [
+                    "IsNotProd",
+                    {
+                      "Effect": "Allow",
+                      "Action": [
+                        "kms:Decrypt",
+                        "kms:ListKeyPolicies",
+                        "kms:ListRetirableGrants",
+                        "kms:GetKeyPolicy",
+                        "kms:Verify",
+                        "kms:ListResourceTags",
+                        "kms:GenerateDataKeyPair",
+                        "kms:ReEncryptFrom",
+                        "kms:ListGrants",
+                        "kms:GetParametersForImport",
+                        "kms:GetKeyRotationStatus",
+                        "kms:Encrypt",
+                        "kms:GenerateDataKey",
+                        "kms:ReEncryptTo",
+                        "kms:DescribeKey"
+                      ],
+                      "Resource": {
+                        "Ref": "LogsBucketKMSKeyArn"
+                      }
+                    },
+                    {
+                      "Ref": "AWS::NoValue"
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "PolicyName": "DropCreateSalesOrder-XRayAccessPolicy",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "xray:PutTraceSegments",
+                    "xray:PutTelemetryRecords",
+                    "xray:GetSamplingRules",
+                    "xray:GetSamplingTargets"
+                  ],
+                  "Resource": [
+                    "*"
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "DropCreateSalesOrderLogGroup": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "RetentionInDays": 7,
+        "LogGroupName": "/aws/states/DropCreateSalesOrder-Logs",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "rx-gbs-datalake-DropCreateSalesOrderLogGroup"
+          },
+          {
+            "Key": "rx:billing:finance-activity-id",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "FinanceActivityId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:finance-entity-id",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "FinanceEntityId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:finance-management-centre-id",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "FinanceManagementCentreId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:jira-project-code",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "JiraProjectCode"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:pm-programme",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "PmProgramme"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:pm-project-code",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "PmProjectCode"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:environment-name",
+            "Value": {
+              "Ref": "BillingEnvironmentName"
+            }
+          }
+        ]
+      }
+    },
+    "DropCreateSalesOrderStepFunction": {
+      "Type": "AWS::StepFunctions::StateMachine",
+      "DependsOn": [
+        "DropCreateSalesOrderRole",
+        "DropCreateSalesOrderLogGroup"
+      ],
+      "Properties": {
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "rx-gbs-datalake-submit-multiple-execution"
+          },
+          {
+            "Key": "rx:billing:finance-activity-id",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "FinanceActivityId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:finance-entity-id",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "FinanceEntityId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:finance-management-centre-id",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "FinanceManagementCentreId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:jira-project-code",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "JiraProjectCode"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:pm-programme",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "PmProgramme"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:pm-project-code",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "PmProjectCode"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:environment-name",
+            "Value": {
+              "Ref": "BillingEnvironmentName"
+            }
+          }
+        ],
+        "StateMachineName": "DropCreateSalesOrder",
+        "LoggingConfiguration": {
+          "Destinations": [
+            {
+              "CloudWatchLogsLogGroup": {
+                "LogGroupArn": {
+                  "Fn::GetAtt": [
+                    "DropCreateSalesOrderLogGroup",
+                    "Arn"
+                  ]
+                }
+              }
+            }
+          ],
+          "IncludeExecutionData": true,
+          "Level": "ALL"
+        },
+        "Definition": {
+          "Comment": "A description of my state machine",
+          "StartAt": "Drop Sales order",
+          "States": {
+            "Drop Sales order": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::athena:startQueryExecution",
+              "Parameters": {
+                "QueryString": {
+                  "Fn::Sub": "DROP table globaldb_raw_${BillingEnvironmentName}.sales_orders"
+                },
+                "WorkGroup": "primary",
+                "ResultConfiguration": {
+                  "OutputLocation": {
+                    "Fn::Sub": "s3://${LogsBucketName}/athena_query_result/"
+                  }
+                }
+              },
+              "Next": "Wait"
+            },
+            "Wait": {
+              "Type": "Wait",
+              "Seconds": 10,
+              "Next": "Athena GetQueryExecution"
+            },
+            "Athena GetQueryExecution": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::athena:getQueryExecution",
+              "Parameters": {
+                "QueryExecutionId.$": "States.Format('{}', $.QueryExecutionId)"
+              },
+              "Next": "Choice"
+            },
+            "Choice": {
+              "Type": "Choice",
+              "Choices": [
+                {
+                  "Variable": "$.QueryExecution.Status.State",
+                  "StringEquals": "SUCCEEDED",
+                  "Next": "Create Sales order"
+                },
+                {
+                  "Variable": "$.QueryExecution.Status.State",
+                  "StringEquals": "QUEUED",
+                  "Next": "Wait"
+                },
+                {
+                  "Variable": "$.QueryExecution.Status.State",
+                  "StringEquals": "RUNNING",
+                  "Next": "Wait"
+                }
+              ],
+              "Default": "Execution Failed"
+            },
+            "Execution Failed": {
+              "Type": "Fail"
+            },
+            "Create Sales order": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::athena:startQueryExecution",
+              "Parameters": {
+                "QueryString": {
+                  "Fn::Sub": "create table globaldb_raw_${BillingEnvironmentName}.sales_orders as select temp.rowwid,temp.wstatusclass,temp.statuscode,temp.substatuscode,temp.wstatuscode,temp.wsubstatuscode,temp.wsubstatus1code,temp.statusintegrationid,temp.empwid,temp.ordertypewid,temp.bookedondtwid,temp.bookedontmwid,temp.cancelledondtwid,temp.cancelledontmwid,temp.closedondtwid,temp.confirmedondtwid,temp.createdontmwid,temp.customerreqstdshipdtwid,temp.customerreqstdshiptmwid,temp.enteredondtwid,temp.inventorydemanddtwid,temp.orderacknowledgeddtwid,temp.orderedondtwid,temp.orderedontmwid,temp.promisedondtwid,temp.promisedontmwid,temp.purchorderdtwid,temp.purchordertmwid,temp.requiredbydtwid,temp.requiredbytmwid,temp.validatedondtwid,temp.promisedarrivaldtwid,temp.requestedarrivaldtwid,temp.fulfilledondtwid,temp.fulfilledontmwid,temp.scheduleshipdt,temp.costamt,temp.netamt,temp.listamt,temp.discountamt,temp.cancelledamt,temp.rollupcostamt,temp.rollupnetamt,temp.rolluplistamt,temp.rollupdiscountamt,temp.rollupmarginamt,temp.salesqty,temp.orderedqty,temp.cancelledqty,temp.totalshippedqty,temp.totalinvoicedqty,temp.customerfirstorderflg,temp.standarduomcode,temp.primaryuomconvrate,temp.primaryuomcode,temp.standarduomconvrate,temp.salesuomcode,temp.ultimatedestcode,temp.salesordernum,temp.salesorderitem,temp.salesorderitemdetailnum,temp.refdocnum,temp.refdocitem,temp.purchordernum,temp.fulfillordernum,temp.fulfillorderlinenum,temp.fulfilllinenum,temp.itemtypecode,temp.serviceflg,temp.earlyshipmentsallowedflg,temp.partialshipmentsallowedflg,temp.bookingflg,temp.shippableflg,temp.fulfilledflg,temp.finbacklogflg,temp.scheduledflg,temp.oprbacklogflg,temp.billingflg,temp.invoiceinterfacedflg,temp.shippinginterfacedflg,temp.rootprodflg,temp.onholdflg,temp.injeopardyflg,temp.backorderflg,temp.salesorderhdid,temp.salesorderlnid,temp.bookingid,temp.fulfillorderid,temp.fulfillorderlineid,temp.doccurrcode,temp.loccurrcode,coalesce(doc_curr.rowwid,0) doccurrencywid,coalesce(loc_curr.rowwid,0) loccurrecywid,temp.locexchangerate,temp.global1exchangerate,temp.global2exchangerate,temp.global3exchangerate,temp.createdbywid,temp.changedbywid,temp.createdondt,temp.changedondt,temp.aux1changedondt,temp.aux2changedondt,temp.aux3changedondt,temp.aux4changedondt,temp.deleteflag,temp.winsertdt,temp.wupdatedt,temp.datasourcenumid,temp.etlprocwid,temp.integrationid,temp.tenantid,temp.xcustom,temp.rootprodlineid,coalesce(ee.rowwid,0) xeventedwid,temp.xombarter,temp.xeffectivedatefrom,temp.xeffectivedateto,temp.xstandid,temp.xoppidheader,temp.xbellidheader,temp.xsectorheader,temp.xsubsectorheader,temp.xbarterheader,temp.xcorners,temp.xcustomerloyalty,temp.xadhocdiscounttype,temp.xadhocdiscountamount,temp.xadhocreasoncode,temp.xpackageitemnumber,temp.xsuppressinvoice,temp.xwaiverfee,temp.xbeneficiarytocustomer,temp.xbeneficiarytoaccountsite,temp.xlastmoddatasource,temp.xbeneficiarytocontact,temp.xbarterflag,temp.xcancellationreasoncode,temp.xheadernotes,temp.xoriginalsplitqty,temp.xeventid,temp.xeventeditionid,temp.xflowstatusheadrer,temp.xmilestonedue,temp.xflowstatusline,temp.xpriceadjustmentid  ,temp.xcreationdate,temp.xlistheaderid,temp.xlistlineid,temp.xlistlinetypecode,temp.xchangereasoncode,temp.xchangereasontext,temp.xadjustmentname,temp.xadjustmenttypecode,temp.xoverrideallowedflag,temp.xadjustmenttypename,temp.xadjrate,temp.xarithmeticoperator,temp.xpricingphaseid,temp.xadjustedamount,temp.xlistlineno,temp.xmodifierlevelcode,temp.xadjustmentdescription,temp.xoperandperpqty,temp.xadjustedamountperpqty,temp.xautomaticflag,temp.xmodifiedfrom,temp.xmodifiedto,temp.xupdateallowed,temp.xappliedflag,temp.xquoteid,temp.xorderdate,coalesce(opp.rowwid,0) xoptywid,ee.eventwid xeventwid,temp.weekstogo,coalesce(quote.rowwid,0) xquotewid,coalesce(stand.rowwid,0) xstandwid,coalesce(beneforg.rowwid,0) xbeneficiaryorgwid,coalesce(benefcon.rowwid,0) xbeneficiarycontactwid,coalesce(benefcon.custpersonwid,0) xbeneficiarypersonwid,coalesce(invorg.rowwid,0) xinvoiceorgwid,coalesce(invcon.rowwid,0) xinvoicecontactwid,coalesce(invcon.custpersonwid,0) xinvoicepersonwid,coalesce(controrg.rowwid,0) xcontractorgwid,coalesce(contrcon.rowwid,0) xcontractcontactwid,coalesce(contrcon.custpersonwid,0) xcontractpersonwid,coalesce(benefaddr.rowwid,0) xbeneficiaryaddrwid,coalesce(contraddr.rowwid,0) xcontractaddrwid,coalesce(invaddr.rowwid,0) xinvoiceaddrwid,coalesce(product.rowwid,0) xproductwid,temp.productmajorcategorydesc,temp.productminorcategorydesc,coalesce(package.rowwid,0) xpackagewid,temp.xordereditem,temp.xpackagelineflg,temp.xpackageflg,temp.xspacequantity,temp.xcontractcontactid,temp.xcontractorgid,temp.xinvoicecontactid,temp.xinvoiceorgid,temp.returnsalesordernum,temp.returnsalesorderlnid,temp.returnsalesorderhdid,temp.xreturncontext,temp.xpricelistname,temp.xadjamt,temp.xsfdcordertype,temp.xduplicateordflg,temp.xorigsyslineref,temp.xconversiontypecode,temp.xuserconversiontype,temp.xsmartspaceflg,temp.xvendorname,temp.xemailoptout,temp.xtaxvalue,temp.xpricelistenddate,temp.xadjustmentreason,temp.xquotelineadjdesc,temp.beneflocationwid,temp.xdaystoevent,temp.xcancelordernum,temp.exhibitorflag,temp.sharerflag,temp.xobucode,temp.spacesalesqtysqm,temp.spacesalesqtysqf,temp.longtermretention,temp.xuserwid,coalesce(partorg.rowwid,0) xparticipatingorgwid,temp.isgrevenuecategory,temp.relxconvrate,coalesce(opp.isgofficeshowwid,0) isgofficeshowwid,temp.cornersmodifier,temp.relxratetoledger,coalesce(opp_con_role.rowwid,0)primaryopcontactwid,coalesce(opp_con_role.custpersonwid,0) primaryoppersonwid,temp.unitlistprice,temp.ledgertousdrelx,temp.ledgertogbprelx,temp.ledgertozarrelx,temp.ledgertobrlrelx,temp.ledgertoeurorelx,temp.loadupdatedby,temp.loadetlid,temp.loadupdateddate,temp.loaddatasource,temp.loadinserteddate,temp.loadinsertedby,temp.loadinsertedtimestamp from globaldb_raw_${BillingEnvironmentName}.sales_orders_temp temp left join globaldb_raw_${BillingEnvironmentName}.currency doc_curr on temp.doccurrcode = doc_curr.currencycode and doc_curr.deleteflag='N' left join globaldb_raw_${BillingEnvironmentName}.currency loc_curr on temp.loccurrcode = loc_curr.currencycode and loc_curr.deleteflag='N' left join globaldb_raw_${BillingEnvironmentName}.eventedition ee on ee.integrationid = temp.eeintegrationid and ee.deleteflag = 'N' left join globaldb_raw_${BillingEnvironmentName}.opportunity opp on opp.integrationid = temp.opportunityintegrationid and opp.deleteflag = 'N' left join globaldb_raw_${BillingEnvironmentName}.quote quote on quote.integrationid = temp.quoteintegrationid and quote.deleteflag = 'N' left join globaldb_raw_${BillingEnvironmentName}.stand stand on stand.integrationid = temp.standintegrationid and stand.deleteflag = 'N' left join globaldb_raw_${BillingEnvironmentName}.organisation beneforg on beneforg.integrationid = temp.beneforgintegrationid and beneforg.deleteflag = 'N' left join globaldb_raw_${BillingEnvironmentName}.contact benefcon on benefcon.integrationid = temp.benefconintegrationid and benefcon.deleteflag = 'N' left join globaldb_raw_${BillingEnvironmentName}.organisation invorg on invorg.integrationid = temp.invorgintegrationid and invorg.deleteflag = 'N' left join globaldb_raw_${BillingEnvironmentName}.contact invcon on invcon.integrationid = temp.invconintegrationid and invcon.deleteflag = 'N' left join globaldb_raw_${BillingEnvironmentName}.organisation controrg on controrg.integrationid = temp.controrgintegrationid and controrg.deleteflag = 'N' left join globaldb_raw_${BillingEnvironmentName}.contact contrcon on contrcon.integrationid = temp.contrconintegrationid and contrcon.deleteflag = 'N' left join globaldb_raw_${BillingEnvironmentName}.address benefaddr on benefaddr.integrationid = temp.benefaddrintegrationid and benefaddr.deleteflag = 'N' left join globaldb_raw_${BillingEnvironmentName}.address contraddr on contraddr.integrationid = temp.contraddrintegrationid and contraddr.deleteflag='N' left join globaldb_raw_${BillingEnvironmentName}.address invaddr on invaddr.integrationid = temp.invaddrintegrationid and invaddr.deleteflag = 'N' left join globaldb_raw_${BillingEnvironmentName}.product product on product.integrationid = temp.productintegrationid and product.deleteflag = 'N' left join globaldb_raw_${BillingEnvironmentName}.productpackage package on package.integrationid = temp.packageintegrationid and package.deleteflag = 'N' left join globaldb_raw_${BillingEnvironmentName}.participatingorg partorg on partorg.integrationid = temp.xpartorgintegrationid and partorg.deleteflag = 'N' left join globaldb_raw_${BillingEnvironmentName}.contact opp_con_role on opp_con_role.integrationid = temp.primaryopconintegrationid and opp_con_role.deleteflag = 'N'"
+                },
+                "WorkGroup": "primary",
+                "ResultConfiguration": {
+                  "OutputLocation": {
+                    "Fn::Sub": "s3://${LogsBucketName}/athena_query_result/"
+                  }
+                }
+              },
+              "End": true
+            }
+          }
+        },
+        "RoleArn": {
+          "Fn::GetAtt": [
+            "DropCreateSalesOrderRole",
+            "Arn"
+          ]
+        }
+      }
+    },
+    "DropCreateSalesOrderLambda": {
+      "Type": "AWS::Lambda::Function",
+      "DependsOn": [
+        "DropCreateSalesOrderStepFunction"
+      ],
+      "Properties": {
+        "Code": {
+          "S3Bucket": {
+            "Ref": "CodeBucketName"
+          },
+          "S3Key": "emr-jobs/lambdas/rx-gbs-datalake-trigger-step-function-sales-orders.zip"
+        },
+        "Handler": "lambda_function.lambda_handler",
+        "MemorySize": 128,
+        "Timeout": 30,
+        "Role": {
+          "Ref": "LambdaServiceRoleArn"
+        },
+        "Environment": {
+          "Variables": {
+            "DropCreateSalesOrderSMArn": {
+              "Fn::GetAtt": [
+                "DropCreateSalesOrderStepFunction",
+                "Arn"
+              ]
+            }
+          }
+        },
+        "Runtime": "python3.7",
+        "FunctionName": "rx-gbs-datalake-trigger-step-function-sales-orders",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "rx-gbs-datalake-trigger-step-function-sales-orders"
+          },
+          {
+            "Key": "rx:billing:finance-activity-id",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "FinanceActivityId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:finance-entity-id",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "FinanceEntityId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:finance-management-centre-id",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "FinanceManagementCentreId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:jira-project-code",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "JiraProjectCode"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:pm-programme",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "PmProgramme"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:pm-project-code",
+            "Value": {
+              "Fn::FindInMap": [
+                "General",
+                "Tags",
+                "PmProjectCode"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:environment-name",
+            "Value": {
+              "Ref": "BillingEnvironmentName"
+            }
+          }
+        ]
+      }
+    },
+    "DropCreateSalesOrderLambdaSNSSubscription": {
+      "Type": "AWS::SNS::Subscription",
+      "DependsOn": [
+        "DropCreateSalesOrderLambda"
+      ],
+      "Properties": {
+        "Endpoint": {
+          "Fn::GetAtt": [
+            "DropCreateSalesOrderLambda",
+            "Arn"
+          ]
+        },
+        "Protocol": "lambda",
+        "TopicArn": {
+          "Ref": "EDWJobCompleteSNSArn"
+        }
+      }
+    },
+    "DropCreateSalesOrderLambdaSNSPermission": {
+      "Type": "AWS::Lambda::Permission",
+      "DependsOn": [
+        "DropCreateSalesOrderLambda"
+      ],
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "DropCreateSalesOrderLambda",
+            "Arn"
+          ]
+        },
+        "Principal": "sns.amazonaws.com",
+        "SourceArn": {
+          "Ref": "EDWJobCompleteSNSArn"
+        }
+      }
+    },
+    "LakeFormationPermissionsForDropCreateSalesOrderRoleDB": {
+      "Type": "AWS::LakeFormation::Permissions",
+      "DependsOn": [
+        "DropCreateSalesOrderRole"
+      ],
+      "Properties": {
+        "DataLakePrincipal": {
+          "DataLakePrincipalIdentifier": {
+            "Fn::GetAtt": [
+              "DropCreateSalesOrderRole",
+              "Arn"
+            ]
+          }
+        },
+        "Permissions": [
+          "ALL"
+        ],
+        "PermissionsWithGrantOption": [
+          "ALL"
+        ],
+        "Resource": {
+          "DatabaseResource": {
+            "Name": {
+              "Fn::Sub": "globaldb_raw_${BillingEnvironmentName}"
+            }
+          }
+        }
+      }
+    },
+    "LakeFormationPermissionsForDropCreateSalesOrderRoleTables": {
+      "Type": "AWS::LakeFormation::Permissions",
+      "DependsOn": [
+        "DropCreateSalesOrderRole"
+      ],
+      "Properties": {
+        "DataLakePrincipal": {
+          "DataLakePrincipalIdentifier": {
+            "Fn::GetAtt": [
+              "DropCreateSalesOrderRole",
+              "Arn"
+            ]
+          }
+        },
+        "Permissions": [
+          "ALL"
+        ],
+        "PermissionsWithGrantOption": [
+          "ALL"
+        ],
+        "Resource": {
+          "TableResource": {
+            "DatabaseName": {
+              "Fn::Sub": "globaldb_raw_${BillingEnvironmentName}"
+            },
+            "TableWildcard": {}
+          }
+        }
+      }
+    },
+    "LakeFormationPermissionsForDropCreateSalesOrderRoleLocation": {
+      "Type": "AWS::LakeFormation::Permissions",
+      "DependsOn": [
+        "DropCreateSalesOrderRole"
+      ],
+      "Properties": {
+        "DataLakePrincipal": {
+          "DataLakePrincipalIdentifier": {
+            "Fn::GetAtt": [
+              "DropCreateSalesOrderRole",
+              "Arn"
+            ]
+          }
+        },
+        "Permissions": [
+          "DATA_LOCATION_ACCESS"
+        ],
+        "Resource": {
+          "DataLocationResource": {
+            "S3Resource": {
+              "Fn::Sub": "arn:aws:s3:::${LogsBucketName}"
+            }
+          }
+        }
+      }
+    }
+  }
+}

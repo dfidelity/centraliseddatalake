@@ -1,0 +1,927 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Template for creating resources related to the jobs logic",
+  "Parameters": {
+    "BillingEnvironmentName": {
+      "AllowedPattern": "[a-zA-Z0-9]*",
+      "Default": "dev",
+      "Description": "The target environment in which the stack is being created",
+      "MinLength": 2,
+      "Type": "String"
+    },
+    "CodeBucketName": {
+      "Description": "S3 location for CF templates for resources that will be included",
+      "Type": "String"
+    },
+    "DmsReconciliationKMSKey": {
+      "Description": "KMS keys for DMS reconciliation reports",
+      "Type": "String"
+    },
+    "ReceiverId": {
+      "Description": "Receiver email address for SNS subscription",
+      "Type": "String"
+    }
+  },
+  "Mappings": {
+    "General": {
+      "Tags": {
+        "FinanceActivityId": "8000",
+        "FinanceEntityId": "0092",
+        "FinanceManagementCentreId": "99440",
+        "JiraProjectCode": "RDL",
+        "PmProgramme": "platform",
+        "PmProjectCode": "n/a"
+      }
+    },
+    "Accounts": {
+      "233855833439": {
+        "Description": "The datalake account (dev)",
+        "Ec2KeyName": "rxgtdataops-dl-dev",
+        "EMRSubnetId": "subnet-065a2297a70fd3162",
+        "EMRMasterSG": "sg-087fcd0996ef906c6",
+        "EMRSlaveSG": "sg-0959f42da88645ec2",
+        "EMRServiceAccessSG": "sg-076ddd8f5f8a437cb",
+        "EMRSecurityConfig": "rx-gbs-datalake-default-emr-configuration"
+      },
+      "376980907058": {
+        "Description": "The datalake account (preprod)",
+        "Ec2KeyName": "Datalake-keypair",
+        "EMRSubnetId": "subnet-026f1ea41f843de62",
+        "EMRMasterSG": "sg-087fcd0996ef906c6",
+        "EMRSlaveSG": "sg-0959f42da88645ec2",
+        "EMRServiceAccessSG": "sg-076ddd8f5f8a437cb",
+        "EMRSecurityConfig": "rx-gbs-datalake-default-emr-configuration"
+      },
+      "767030707495": {
+        "Description": "The datalake account (prod)",
+        "Ec2KeyName": "rxgtdataops-keypair",
+        "EMRSubnetId": "subnet-0414993a31e71f026",
+        "EMRMasterSG": "sg-0d42792dd96900cba",
+        "EMRSlaveSG": "sg-07d10b8d4988af48a",
+        "EMRServiceAccessSG": "sg-0b54358da86828156",
+        "EMRSecurityConfig": "rx-gbs-datalake-default-emr-configuration"
+      }
+    }
+  },
+  "Conditions": {
+    "IsDev": {
+      "Fn::And": [
+        {
+          "Fn::Equals": [
+            {
+              "Ref": "AWS::AccountId"
+            },
+            "233855833439"
+          ]
+        },
+        {
+          "Fn::Equals": [
+            {
+              "Ref": "BillingEnvironmentName"
+            },
+            "dev"
+          ]
+        }
+      ]
+    },
+    "IsNotDev": {
+      "Fn::Not": [
+        {
+          "Condition": "IsDev"
+        }
+      ]
+    },
+    "IsPreprod": {
+      "Fn::Equals": [
+        {
+          "Ref": "AWS::AccountId"
+        },
+        "376980907058"
+      ]
+    },
+    "IsProd": {
+      "Fn::Equals": [
+        {
+          "Ref": "AWS::AccountId"
+        },
+        "767030707495"
+      ]
+    },
+    "IsNotProd": {
+      "Fn::Not": [
+        {
+          "Condition": "IsProd"
+        }
+      ]
+    },
+    "IsNotPreprod": {
+      "Fn::Not": [
+        {
+          "Condition": "IsPreprod"
+        }
+      ]
+    },
+    "IsPreprodOrProd": {
+      "Fn::Or": [
+        {
+          "Condition": "IsPreprod"
+        },
+        {
+          "Condition": "IsProd"
+        }
+      ]
+    }
+  },
+  "Resources": {
+    "GlobalETLConfigDB": {
+      "Type": "AWS::Glue::Database",
+      "Properties": {
+        "DatabaseInput": {
+          "Name": {
+            "Fn::Sub": "globaldb_etl_config_${BillingEnvironmentName}"
+          }
+        },
+        "CatalogId": {
+          "Ref": "AWS::AccountId"
+        }
+      }
+    },
+    "GlobalRawDB": {
+      "Type": "AWS::Glue::Database",
+      "Properties": {
+        "DatabaseInput": {
+          "Name": {
+            "Fn::Sub": "globaldb_raw_${BillingEnvironmentName}"
+          }
+        },
+        "CatalogId": {
+          "Ref": "AWS::AccountId"
+        }
+      }
+    },
+    "GlobalRefinedDB": {
+      "Type": "AWS::Glue::Database",
+      "Properties": {
+        "DatabaseInput": {
+          "Name": {
+            "Fn::Sub": "globaldb_refined_${BillingEnvironmentName}"
+          }
+        },
+        "CatalogId": {
+          "Ref": "AWS::AccountId"
+        }
+      }
+    },
+    "GlobalNonAnonDB": {
+      "Type": "AWS::Glue::Database",
+      "Properties": {
+        "DatabaseInput": {
+          "Name": {
+            "Fn::Sub": "globaldb_non_anonymized_${BillingEnvironmentName}"
+          }
+        },
+        "CatalogId": {
+          "Ref": "AWS::AccountId"
+        }
+      }
+    },
+    "GlobalEFMDB": {
+      "Type": "AWS::Glue::Database",
+      "Properties": {
+        "DatabaseInput": {
+          "Name": {
+            "Fn::Sub": "globaldb_efm_${BillingEnvironmentName}"
+          }
+        },
+        "CatalogId": {
+          "Ref": "AWS::AccountId"
+        }
+      }
+    },
+    "GlobalGleaninDB": {
+      "Type": "AWS::Glue::Database",
+      "Properties": {
+        "DatabaseInput": {
+          "Name": {
+            "Fn::Sub": "globaldb_gleanin_${BillingEnvironmentName}"
+          }
+        },
+        "CatalogId": {
+          "Ref": "AWS::AccountId"
+        }
+      }
+    },
+    "ETLJobConfigTable": {
+      "Fn::Transform": {
+        "Name": "AWS::Include",
+        "Parameters": {
+          "Location": {
+            "Fn::Sub": "s3://${CodeBucketName}/emr-jobs/cf-templates/etl-job-config-table.json"
+          }
+        }
+      }
+    },
+    "ETLJobLogHistoryTable": {
+      "Fn::Transform": {
+        "Name": "AWS::Include",
+        "Parameters": {
+          "Location": {
+            "Fn::Sub": "s3://${CodeBucketName}/emr-jobs/cf-templates/etl-job-log-history-table.json"
+          }
+        }
+      }
+    },
+    "RoleForLakeFormationDataAccess": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "RoleName": "rx-gbs-datalake-lf-access-role",
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": [
+                  "lakeformation.amazonaws.com"
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    "RoleForLakeFormationDataAccessPolicy": {
+      "Type": "AWS::IAM::Policy",
+      "DependsOn": "RoleForLakeFormationDataAccess",
+      "Properties": {
+        "PolicyName": "rx-gbs-datalake-LakeFormationDataAccessPolicyForS3",
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Action": [
+                "s3:PutObject",
+                "s3:GetObject",
+                "s3:DeleteObject"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::Sub": "arn:aws:s3:::rx-gbs-datalake-landingzone-${BillingEnvironmentName}/*"
+                },
+                {
+                  "Fn::Sub": "arn:aws:s3:::rx-gbs-datalake-processingzone-${BillingEnvironmentName}/*"
+                },
+                {
+                  "Fn::Sub": "arn:aws:s3:::rx-gbs-datalake-rawzone-${BillingEnvironmentName}/*"
+                },
+                {
+                  "Fn::Sub": "arn:aws:s3:::rx-gbs-datalake-refinedzone-${BillingEnvironmentName}/*"
+                },
+                {
+                  "Fn::Sub": "arn:aws:s3:::rx-gbs-datalake-logs-${BillingEnvironmentName}/*"
+                },
+                {
+                  "Fn::Sub": "arn:aws:s3:::rx-gbs-datalake-non-anonymized-${BillingEnvironmentName}/*"
+                },
+                {
+                  "Fn::Sub": "arn:aws:s3:::rx-gbs-datalake-data-quality-zone-${BillingEnvironmentName}/*"
+                }
+              ]
+            },
+            {
+              "Action": [
+                "s3:ListBucket"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::Sub": "arn:aws:s3:::rx-gbs-datalake-landingzone-${BillingEnvironmentName}"
+                },
+                {
+                  "Fn::Sub": "arn:aws:s3:::rx-gbs-datalake-processingzone-${BillingEnvironmentName}"
+                },
+                {
+                  "Fn::Sub": "arn:aws:s3:::rx-gbs-datalake-rawzone-${BillingEnvironmentName}"
+                },
+                {
+                  "Fn::Sub": "arn:aws:s3:::rx-gbs-datalake-refinedzone-${BillingEnvironmentName}"
+                },
+                {
+                  "Fn::Sub": "arn:aws:s3:::rx-gbs-datalake-logs-${BillingEnvironmentName}"
+                },
+                {
+                  "Fn::Sub": "arn:aws:s3:::rx-gbs-datalake-non-anonymized-${BillingEnvironmentName}"
+                },
+                {
+                  "Fn::Sub": "arn:aws:s3:::rx-gbs-datalake-data-quality-zone-${BillingEnvironmentName}"
+                }
+              ]
+            },
+            {
+              "Action": [
+                "s3:ListAllMyBuckets"
+              ],
+              "Effect": "Allow",
+              "Resource": "*"
+            }
+          ]
+        },
+        "Roles": [
+          {
+            "Ref": "RoleForLakeFormationDataAccess"
+          }
+        ]
+      }
+    },
+    "RoleForLakeFormationDataAccessPolicy2": {
+      "Type": "AWS::IAM::Policy",
+      "DependsOn": "RoleForLakeFormationDataAccess",
+      "Properties": {
+        "PolicyName": "rx-gbs-datalake-s3-kms-access",
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Action": [
+                "kms:Decrypt",
+                "kms:ListKeyPolicies",
+                "kms:ListRetirableGrants",
+                "kms:GetKeyPolicy",
+                "kms:Verify",
+                "kms:ListResourceTags",
+                "kms:GenerateDataKeyPair",
+                "kms:ReEncryptFrom",
+                "kms:ListGrants",
+                "kms:GetParametersForImport",
+                "kms:GetKeyRotationStatus",
+                "kms:Encrypt",
+                "kms:GenerateDataKey",
+                "kms:ReEncryptTo",
+                "kms:DescribeKey"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::ImportValue": {
+                    "Fn::Sub": "dms-kms-key-arn-${BillingEnvironmentName}"
+                  }
+                },
+                {
+                  "Fn::ImportValue": {
+                    "Fn::Sub": "processing-zone-kms-key-arn-${BillingEnvironmentName}"
+                  }
+                },
+                {
+                  "Fn::ImportValue": {
+                    "Fn::Sub": "refined-zone-kms-key-arn-${BillingEnvironmentName}"
+                  }
+                },
+                {
+                  "Fn::ImportValue": {
+                    "Fn::Sub": "raw-zone-kms-key-arn-${BillingEnvironmentName}"
+                  }
+                },
+                {
+                  "Fn::ImportValue": {
+                    "Fn::Sub": "landing-zone-kms-key-arn-${BillingEnvironmentName}"
+                  }
+                },
+                {
+                  "Fn::ImportValue": {
+                    "Fn::Sub": "logs-kms-key-arn-${BillingEnvironmentName}"
+                  }
+                },
+                {
+                  "Fn::ImportValue": {
+                    "Fn::Sub": "non-anonymized-kms-key-arn-${BillingEnvironmentName}"
+                  }
+                },
+                {
+                  "Fn::ImportValue": {
+                    "Fn::Sub": "ssm-kms-key-arn-${BillingEnvironmentName}"
+                  }
+                },
+                {
+                  "Fn::If": [
+                    "IsNotProd",
+                    {
+                      "Fn::ImportValue": {
+                        "Fn::Sub": "aws-kms-key-arn-${BillingEnvironmentName}"
+                      }
+                    },
+                    {
+                      "Ref": "AWS::NoValue"
+                    }
+                  ]
+                },
+                {
+                  "Fn::If": [
+                    "IsNotProd",
+                    {
+                      "Fn::ImportValue": {
+                        "Fn::Sub": "dataquality-zone-kms-key-arn-${BillingEnvironmentName}"
+                      }
+                    },
+                    {
+                      "Ref": "AWS::NoValue"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": [
+                "kms:DescribeCustomKeyStores",
+                "kms:ListKeys",
+                "kms:ListAliases"
+              ],
+              "Effect": "Allow",
+              "Resource": "*"
+            }
+          ]
+        },
+        "Roles": [
+          {
+            "Ref": "RoleForLakeFormationDataAccess"
+          }
+        ]
+      }
+    },
+    "EMRRole": {
+      "Fn::Transform": {
+        "Name": "AWS::Include",
+        "Parameters": {
+          "Location": {
+            "Fn::Sub": "s3://${CodeBucketName}/emr-jobs/cf-templates/rx-gbs-datalake-iam-emr-role.json"
+          }
+        }
+      }
+    },
+    "EMRInstanceProfile": {
+      "Type": "AWS::IAM::InstanceProfile",
+      "DependsOn": [
+        "EMRRole"
+      ],
+      "Properties": {
+        "InstanceProfileName": "rx-gbs-datalake-EMR-role",
+        "Roles": [
+          {
+            "Ref": "EMRRole"
+          }
+        ]
+      }
+    },
+    "EMRSecurityConfig": {
+      "Condition": "IsProd",
+      "Type": "AWS::EMR::SecurityConfiguration",
+      "Properties": {
+        "Name": "rx-gbs-datalake-default-emr-configuration",
+        "SecurityConfiguration": {
+          "EncryptionConfiguration": {
+            "AtRestEncryptionConfiguration": {
+              "S3EncryptionConfiguration": {
+                "EncryptionMode": "SSE-KMS",
+                "AwsKmsKey": {
+                  "Fn::If": [
+                    "IsProd",
+                    {
+                      "Fn::ImportValue": {
+                        "Fn::Sub": "raw-zone-kms-key-arn-${BillingEnvironmentName}"
+                      }
+                    },
+                    {
+                      "Fn::ImportValue": {
+                        "Fn::Sub": "aws-kms-key-arn-${BillingEnvironmentName}"
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            "EnableInTransitEncryption": false,
+            "EnableAtRestEncryption": true
+          }
+        }
+      }
+    },
+    "LambdaServiceRole": {
+      "Fn::Transform": {
+        "Name": "AWS::Include",
+        "Parameters": {
+          "Location": {
+            "Fn::Sub": "s3://${CodeBucketName}/emr-jobs/cf-templates/rx-gbs-datalake-iam-lambda-role.json"
+          }
+        }
+      }
+    },
+    "StepFunctionServiceRole": {
+      "Fn::Transform": {
+        "Name": "AWS::Include",
+        "Parameters": {
+          "Location": {
+            "Fn::Sub": "s3://${CodeBucketName}/emr-jobs/cf-templates/rx-gbs-datalake-iam-stepfunction-role.json"
+          }
+        }
+      }
+    },
+    "GlueJobServiceRole": {
+      "Fn::Transform": {
+        "Name": "AWS::Include",
+        "Parameters": {
+          "Location": {
+            "Fn::Sub": "s3://${CodeBucketName}/emr-jobs/cf-templates/rx-gbs-datalake-iam-glue-job-role.json"
+          }
+        }
+      }
+    },
+    "ETLJobConfigValidationLambda": {
+      "Fn::Transform": {
+        "Name": "AWS::Include",
+        "Parameters": {
+          "Location": {
+            "Fn::Sub": "s3://${CodeBucketName}/emr-jobs/cf-templates/rx-gbs-datalake-etl-job-config-validation.json"
+          }
+        }
+      }
+    },
+    "DMSUpgradeReplicationInstanceLambda": {
+      "Fn::Transform": {
+        "Name": "AWS::Include",
+        "Parameters": {
+          "Location": {
+            "Fn::Sub": "s3://${CodeBucketName}/emr-jobs/cf-templates/rx-gbs-datalake-dms-upgrade-replication-instance.json"
+          }
+        }
+      }
+    },
+    "DMSDowngradeReplicationInstanceLambda": {
+      "Fn::Transform": {
+        "Name": "AWS::Include",
+        "Parameters": {
+          "Location": {
+            "Fn::Sub": "s3://${CodeBucketName}/emr-jobs/cf-templates/rx-gbs-datalake-dms-downgrade-replication-instance.json"
+          }
+        }
+      }
+    },
+    "DMSReplicationInstanceStatusLambda": {
+      "Fn::Transform": {
+        "Name": "AWS::Include",
+        "Parameters": {
+          "Location": {
+            "Fn::Sub": "s3://${CodeBucketName}/emr-jobs/cf-templates/rx-gbs-datalake-dms-replication-instance-status.json"
+          }
+        }
+      }
+    },
+    "DMSRunTaskLambda": {
+      "Fn::Transform": {
+        "Name": "AWS::Include",
+        "Parameters": {
+          "Location": {
+            "Fn::Sub": "s3://${CodeBucketName}/emr-jobs/cf-templates/rx-gbs-datalake-dms-run-full-load-ps.json"
+          }
+        }
+      }
+    },
+    "DMSTaskStatusLambda": {
+      "Fn::Transform": {
+        "Name": "AWS::Include",
+        "Parameters": {
+          "Location": {
+            "Fn::Sub": "s3://${CodeBucketName}/emr-jobs/cf-templates/rx-gbs-datalake-dms-check-status.json"
+          }
+        }
+      }
+    },
+    "DMSSendSNSFromStepFunctionLambda": {
+      "Fn::Transform": {
+        "Name": "AWS::Include",
+        "Parameters": {
+          "Location": {
+            "Fn::Sub": "s3://${CodeBucketName}/emr-jobs/cf-templates/rx-gbs-datalake-dms-send-sns-from-step-function.json"
+          }
+        }
+      }
+    },
+    "CreateEMRClusterLambda": {
+      "Fn::Transform": {
+        "Name": "AWS::Include",
+        "Parameters": {
+          "Location": {
+            "Fn::Sub": "s3://${CodeBucketName}/emr-jobs/cf-templates/rx-gbs-datalake-create-emr-cluster.json"
+          }
+        }
+      }
+    },
+    "CheckEMRClusterStatusLambda": {
+      "Fn::Transform": {
+        "Name": "AWS::Include",
+        "Parameters": {
+          "Location": {
+            "Fn::Sub": "s3://${CodeBucketName}/emr-jobs/cf-templates/rx-gbs-datalake-check-emr-cluster-status.json"
+          }
+        }
+      }
+    },
+    "GetEMRDNSLambda": {
+      "Fn::Transform": {
+        "Name": "AWS::Include",
+        "Parameters": {
+          "Location": {
+            "Fn::Sub": "s3://${CodeBucketName}/emr-jobs/cf-templates/rx-gbs-datalake-get-emr-DNS.json"
+          }
+        }
+      }
+    },
+    "SubmitEMRJobLambda": {
+      "Fn::Transform": {
+        "Name": "AWS::Include",
+        "Parameters": {
+          "Location": {
+            "Fn::Sub": "s3://${CodeBucketName}/emr-jobs/cf-templates/rx-gbs-datalake-submit-emr-job.json"
+          }
+        }
+      }
+    },
+    "SubmitEMRMergeJobLambda": {
+      "Fn::Transform": {
+        "Name": "AWS::Include",
+        "Parameters": {
+          "Location": {
+            "Fn::Sub": "s3://${CodeBucketName}/emr-jobs/cf-templates/rx-gbs-datalake-submit-merge-emr-job.json"
+          }
+        }
+      }
+    },
+    "GetEMRJobStatusLambda": {
+      "Fn::Transform": {
+        "Name": "AWS::Include",
+        "Parameters": {
+          "Location": {
+            "Fn::Sub": "s3://${CodeBucketName}/emr-jobs/cf-templates/rx-gbs-datalake-get-emr-job-status-boto3.json"
+          }
+        }
+      }
+    },
+    "TerminateEMRClusterLambda": {
+      "Fn::Transform": {
+        "Name": "AWS::Include",
+        "Parameters": {
+          "Location": {
+            "Fn::Sub": "s3://${CodeBucketName}/emr-jobs/cf-templates/rx-gbs-datalake-terminate-emr-cluster.json"
+          }
+        }
+      }
+    },
+    "SendSNSFromStepFunctionLambda": {
+      "Fn::Transform": {
+        "Name": "AWS::Include",
+        "Parameters": {
+          "Location": {
+            "Fn::Sub": "s3://${CodeBucketName}/emr-jobs/cf-templates/rx-gbs-datalake-send-sns-from-step-function.json"
+          }
+        }
+      }
+    },
+    "MyStateMachine": {
+      "Fn::Transform": {
+        "Name": "AWS::Include",
+        "Parameters": {
+          "Location": {
+            "Fn::Sub": "s3://${CodeBucketName}/emr-jobs/cf-templates/rx-gbs-datalake-submit-emr-parallel-execution.json"
+          }
+        }
+      }
+    }
+  },
+  "Outputs": {
+    "lambdaServiceRoleARN": {
+      "Value": {
+        "Fn::GetAtt": [
+          "LambdaServiceRole",
+          "Arn"
+        ]
+      },
+      "Description": "Lambda Service Role ARN",
+      "Export": {
+        "Name": "global-lambdaServiceRoleARN"
+      }
+    },
+    "emrServiceRoleARN": {
+      "Value": {
+        "Fn::GetAtt": [
+          "EMRRole",
+          "Arn"
+        ]
+      },
+      "Description": "EMR Service Role ARN",
+      "Export": {
+        "Name": "global-emrServiceRoleARN"
+      }
+    },
+    "stepFunctionServiceRoleARN": {
+      "Value": {
+        "Fn::GetAtt": [
+          "StepFunctionServiceRole",
+          "Arn"
+        ]
+      },
+      "Description": "StepFunction Service Role ARN",
+      "Export": {
+        "Name": "global-stepFunctionServiceRoleARN"
+      }
+    },
+    "GlueJobServiceRoleARN": {
+      "Value": {
+        "Fn::GetAtt": [
+          "GlueJobServiceRole",
+          "Arn"
+        ]
+      },
+      "Description": "Glue Jobs Service Role ARN",
+      "Export": {
+        "Name": "global-GlueJobServiceRoleARN"
+      }
+    },
+    "LakeFormationDataAccessRoleARN": {
+      "Value": {
+        "Fn::GetAtt": [
+          "RoleForLakeFormationDataAccess",
+          "Arn"
+        ]
+      },
+      "Description": "rx-gbs-datalake-lf-access-role ARN",
+      "Export": {
+        "Name": "global-RoleForLakeFormationDataAccess"
+      }
+    },
+    "ETLJobConfigValidationLambdaARN": {
+      "Value": {
+        "Fn::GetAtt": [
+          "ETLJobConfigValidationLambda",
+          "Arn"
+        ]
+      },
+      "Export": {
+        "Name": "ETLJobConfigValidationLambdaARN"
+      }
+    },
+    "DMSUpgradeReplicationInstanceLambdaARN": {
+      "Value": {
+        "Fn::GetAtt": [
+          "DMSUpgradeReplicationInstanceLambda",
+          "Arn"
+        ]
+      },
+      "Export": {
+        "Name": "DMSUpgradeReplicationInstanceLambdaARN"
+      }
+    },
+    "DMSDowngradeReplicationInstanceLambdaARN": {
+      "Value": {
+        "Fn::GetAtt": [
+          "DMSDowngradeReplicationInstanceLambda",
+          "Arn"
+        ]
+      },
+      "Export": {
+        "Name": "DMSDowngradeReplicationInstanceLambdaARN"
+      }
+    },
+    "DMSReplicationInstanceStatusLambdaARN": {
+      "Value": {
+        "Fn::GetAtt": [
+          "DMSReplicationInstanceStatusLambda",
+          "Arn"
+        ]
+      },
+      "Export": {
+        "Name": "DMSReplicationInstanceStatusLambdaARN"
+      }
+    },
+    "DMSRunTaskLambdaARN": {
+      "Value": {
+        "Fn::GetAtt": [
+          "DMSRunTaskLambda",
+          "Arn"
+        ]
+      },
+      "Export": {
+        "Name": "DMSRunTaskLambdaARN"
+      }
+    },
+    "DMSTaskStatusLambdaARN": {
+      "Value": {
+        "Fn::GetAtt": [
+          "DMSTaskStatusLambda",
+          "Arn"
+        ]
+      },
+      "Export": {
+        "Name": "DMSTaskStatusLambdaARN"
+      }
+    },
+    "DMSSendSNSFromStepFunctionLambdaARN": {
+      "Value": {
+        "Fn::GetAtt": [
+          "DMSSendSNSFromStepFunctionLambda",
+          "Arn"
+        ]
+      },
+      "Export": {
+        "Name": "DMSSendSNSFromStepFunctionLambdaARN"
+      }
+    },
+    "CreateEMRClusterLambdaARN": {
+      "Value": {
+        "Fn::GetAtt": [
+          "CreateEMRClusterLambda",
+          "Arn"
+        ]
+      },
+      "Export": {
+        "Name": "CreateEMRClusterLambdaARN"
+      }
+    },
+    "CheckEMRClusterStatusLambdaARN": {
+      "Value": {
+        "Fn::GetAtt": [
+          "CheckEMRClusterStatusLambda",
+          "Arn"
+        ]
+      },
+      "Export": {
+        "Name": "CheckEMRClusterStatusLambdaARN"
+      }
+    },
+    "GetEMRDNSLambdaARN": {
+      "Value": {
+        "Fn::GetAtt": [
+          "GetEMRDNSLambda",
+          "Arn"
+        ]
+      },
+      "Export": {
+        "Name": "GetEMRDNSLambdaARN"
+      }
+    },
+    "SubmitEMRJobLambdaARN": {
+      "Value": {
+        "Fn::GetAtt": [
+          "SubmitEMRJobLambda",
+          "Arn"
+        ]
+      },
+      "Export": {
+        "Name": "SubmitEMRJobLambdaARN"
+      }
+    },
+    "SubmitEMRMergeJobLambdaARN": {
+      "Value": {
+        "Fn::GetAtt": [
+          "SubmitEMRMergeJobLambda",
+          "Arn"
+        ]
+      },
+      "Export": {
+        "Name": "SubmitEMRMergeJobLambdaARN"
+      }
+    },
+    "GetEMRJobStatusLambdaARN": {
+      "Value": {
+        "Fn::GetAtt": [
+          "GetEMRJobStatusLambda",
+          "Arn"
+        ]
+      },
+      "Export": {
+        "Name": "GetEMRJobStatusLambdaARN"
+      }
+    },
+    "TerminateEMRClusterLambdaARN": {
+      "Value": {
+        "Fn::GetAtt": [
+          "TerminateEMRClusterLambda",
+          "Arn"
+        ]
+      },
+      "Export": {
+        "Name": "TerminateEMRClusterLambdaARN"
+      }
+    },
+    "SendSNSFromStepFunctionLambdaARN": {
+      "Value": {
+        "Fn::GetAtt": [
+          "SendSNSFromStepFunctionLambda",
+          "Arn"
+        ]
+      },
+      "Export": {
+        "Name": "SendSNSFromStepFunctionLambdaARN"
+      }
+    }
+  }
+}

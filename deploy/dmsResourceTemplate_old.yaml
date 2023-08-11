@@ -1,0 +1,817 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: "DMS create replication instance and endpoints template"
+
+Parameters:
+  BillingEnvironmentName:
+    Description: "The target environment in which the stack is being created"
+    Type: String
+  SourceDataBase:
+    Default: ""
+    Description: "Source database name"
+    Type: String
+  SourceDataBaseEngine:
+    Default: ""
+    Description: "Source database engine name, Source DB engine. Valid values, depending on the EndpointType value, include
+            mysql, oracle, postgres, mariadb, aurora, aurora-postgresql, redshift, s3, db2,
+            azuredb, sybase, dynamodb, mongodb, and sqlserver. "
+    Type: String
+  SourceDataBaseServerName:
+    Default: ""
+    Description: "Source database server name"
+    Type: String
+  SourceDataBasePort:
+    Default: 1
+    Description: "Source database port number"
+    Type: Number
+  SourceDataBaseUserName:
+    Default: ""
+    Description: "Source database user name"
+    Type: String
+  SourceDataBasePassword:
+    Default: ""
+    Description: "Source database password"
+    NoEcho: true
+    Type: String
+
+  SourceDataBase2:
+    Default: ""
+    Description: "Source database name"
+    Type: String
+  SourceDataBaseEngine2:
+    Default: ""
+    Description: "Source database engine name, Source DB engine. Valid values, depending on the EndpointType value, include
+            mysql, oracle, postgres, mariadb, aurora, aurora-postgresql, redshift, s3, db2,
+            azuredb, sybase, dynamodb, mongodb, and sqlserver. "
+    Type: String
+  SourceDataBaseServerName2:
+    Default: ""
+    Description: "Source database server name"
+    Type: String
+  SourceDataBasePort2:
+    Default: 1
+    Description: "Source database port number"
+    Type: Number
+  SourceDataBaseUserName2:
+    Default: ""
+    Description: "Source database user name"
+    Type: String
+  SourceDataBasePassword2:
+    Default: ""
+    Description: "Source database password"
+    NoEcho: true
+    Type: String
+
+  SecurityGroups:
+    Description: The list of SecurityGroupIds in your Virtual Private Cloud (VPC)
+    Type: 'List<AWS::EC2::SecurityGroup::Id>'
+
+  TargetEngineNameForS3:
+    Default: "S3"
+    Description: "Source database engine name, Source DB engine. Valid values, depending on the EndpointType value, include
+            mysql, oracle, postgres, mariadb, aurora, aurora-postgresql, redshift, s3, db2,
+            azuredb, sybase, dynamodb, mongodb, and sqlserver. "
+    Type: String
+  TargetS3BucketName:
+    Default: "rx-gbs-datalake-landingzone-prod"
+    Description: "The S3 bucket that you're using as a target is in the same AWS Region as the DMS replication instance you are using to migrate your data."
+    Type: String
+  TargetS3RawBucketName:
+    Default: "rx-gbs-datalake-rawzone-prod"
+    Description: "The S3 bucket that you're using as a target is in the same AWS Region as the DMS replication instance you are using to migrate your data."
+    Type: String
+  TargetS3ExtraConnectionAttributes:
+    Default: "bucketName=rx-gbs-datalake-landingzone-prod;compressionType=NONE;maxFileSize=524000;csvDelimiter=,;csvRowDelimiter=\n;dataFormat=parquet;datePartitionDelimiter=SLASH;"
+    Description: "Extra connection attributes that you provide as a semicolon-separated list when you create the endpoint for legacy task"
+    Type: String
+  TargetS3RawExtraConnectionAttributes:
+    Default: "bucketFolder=transactiondata/emailsend/;bucketName=rx-gbs-datalake-rawzone-prod;compressionType=NONE;csvDelimiter=,;csvRowDelimiter=\n;dataFormat=parquet;datePartitionDelimiter=SLASH;DatePartitionEnabled=false;datePartitionSequence=YYYYMMDD;"
+    Description: "Extra connection attributes that you provide as a semicolon-separated list when you create the endpoint for legacy task"
+    Type: String
+
+  SourceExtraConnectionAttributes1:
+    Default: "useLogminerReader=N;securityDbEncryptionName=ORACLE.SECURITY.DB.ENCRYPTION.AfALNHvSV0++v2e2u/6kdrQAAAAAAAAAAAAAAAAAAAAAAAAAAAAA = AEMAASAA7w4m61AD2wSF++kKKiJxKundHsxKiX8hDJZJBcqVQgIDEADuSeD4A6MPhj/be8KMhRsFBQcAeHoFDBEPAQ=="
+    Description: "OCI - PS general - Extra connection attributes that you provide as a semicolon-separated list when you create the endpoint for legacy task"
+    Type: String
+
+  SourceExtraConnectionAttributes2:
+    Default: "useLogminerReader=N;securityDbEncryptionName=ORACLE.SECURITY.DB.ENCRYPTION.AfALNHvSV0++v2e2u/6kdrQAAAAAAAAAAAAAAAAAAAAAAAAAAAAA = AEMAASAA7w4m61AD2wSF++kKKiJxKundHsxKiX8hDJZJBcqVQgIDEADuSeD4A6MPhj/be8KMhRsFBQcAeHoFDBEPAQ=="
+    Description: "OCI - DW - Extra connection attributes that you provide as a semicolon-separated list when you create the endpoint for legacy task"
+    Type: String
+
+  SourceExtraConnectionAttributes3:
+    Default: "useLogminerReader=N"
+    Description: "OCI - OBIEE - Extra connection attributes that you provide as a semicolon-separated list when you create the endpoint for legacy task"
+    Type: String
+
+  SourceExtraConnectionAttributes4:
+    Default: "useLogminerReader=N;useBfile=Y;asm_user=AWSASM;asm_server=10.206.74.206:30211/+ASM_RECO;addSupplementalLogging=Y;securityDbEncryptionName=ORACLE.SECURITY.DB.ENCRYPTION.AUn9mYd/5U/Gv5IF4N8gLw8AAAAAAAAAAAAAAAAAAAAAAAAAAAAA;copyToTempFolder=/stage/backups/dms;deleteProccessedArchiveLogs=Y;parallelASMReadThreads=6;readAheadBlocks=150000"
+    Description: "OCI - EMAILSEND PS - Extra connection attributes that you provide as a semicolon-separated list when you create the endpoint for legacy task"
+    Type: String
+  DmsKmsKey:
+    Default: "arn:aws:kms:eu-west-1:767030707495:key/8971e0ee-4a4e-4f28-a1d1-42d3cccd9b92"
+    Description: "KMS key for DMS replication instance"
+    Type: String
+  CreateReplicationInstanceOnly:
+    Description: If Yes, then only the replication instance will be created.
+    Type: String
+    Default: 'false'
+    AllowedValues:
+      - 'true'
+      - 'false'
+  CreateSourceEndpointOnly:
+    Description: If Yes, then only the source endpoint will be created.
+    Type: String
+    Default: 'false'
+    AllowedValues:
+      - 'true'
+      - 'false'
+  CreateDestinationEndpointOnly:
+    Description: If Yes, then only the destination endpoint will be created so it can be prepopulated.
+    Type: String
+    Default: 'false'
+    AllowedValues:
+      - 'true'
+      - 'false'
+  CreateRawDestinationEndpointOnly:
+    Description: If Yes, then only the destination endpoint will be created so it can be prepopulated.
+    Type: String
+    Default: 'false'
+    AllowedValues:
+      - 'true'
+      - 'false'
+  CreateTaskOnly:
+    Description: If Yes, then only the Tasks will be created so it can be prepopulated.
+    Type: String
+    Default: 'false'
+    AllowedValues:
+      - 'true'
+      - 'false'
+
+Conditions:
+  CreateReplicationInstanceResources:
+    Fn::Equals:
+      - Ref: CreateReplicationInstanceOnly
+      - 'true'
+  CreateSourceEndpointResources:
+    Fn::Equals:
+      - Ref: CreateSourceEndpointOnly
+      - 'true'
+  CreateDestinationEndpointResources:
+    Fn::Equals:
+      - Ref: CreateDestinationEndpointOnly
+      - 'true'
+  CreateRawDestinationEndpointResources:
+    Fn::Equals:
+      - Ref: CreateRawDestinationEndpointOnly
+      - 'true'
+  CreateTaskResources:
+    Fn::Equals:
+      - Ref: CreateTaskOnly
+      - 'true'
+
+Mappings:
+  '767030707495':
+    Network:
+      VpcId: vpc-0d8c5716b7a6dbf81
+      PrivateSubnets: [ "subnet-0df91653a7438e6f4","subnet-09315bb9280275179" ]
+    Tags:
+      FinanceActivityId: "8000"
+      FinanceEntityId: "0092"
+      FinanceManagementCentreId: "99440"
+      JiraProjectCode: RDL
+      PmProgramme: platform
+      PmProjectCode: n/a
+      BillingEnvironmentName: core-prod
+  '376980907058':
+    Network:
+      VpcId: vpc-0c50f5a7d0f8fc9a3
+      PrivateSubnets: [ "subnet-026f1ea41f843de62","subnet-0dafdbe3dcbc083d7" ]
+    Tags:
+      FinanceActivityId: "8000"
+      FinanceEntityId: "0092"
+      FinanceManagementCentreId: "99440"
+      JiraProjectCode: RDL
+      PmProgramme: platform
+      PmProjectCode: n/a
+      BillingEnvironmentName: core-prod
+
+Resources:
+  ReplicationInstanceSubnetGroup:
+    Type: AWS::DMS::ReplicationSubnetGroup
+    Properties:
+      ReplicationSubnetGroupDescription: !Sub '${AWS::StackName} DMS Subnet Group'
+      ReplicationSubnetGroupIdentifier: !Sub '${AWS::StackName}-dms-subnet-group'
+      SubnetIds: !FindInMap
+        - !Ref 'AWS::AccountId'
+        - Network
+        - PrivateSubnets
+
+  DMSReplicationOnlyCDCInstance:
+    Condition: CreateReplicationInstanceResources
+    DependsOn: ReplicationInstanceSubnetGroup
+    Type: "AWS::DMS::ReplicationInstance"
+    Properties:
+      ReplicationInstanceClass: dms.t3.micro
+      PubliclyAccessible: false
+      MultiAZ: false
+      PreferredMaintenanceWindow: sat:03:48-sat:04:48
+      ReplicationSubnetGroupIdentifier: !Ref ReplicationInstanceSubnetGroup
+      VpcSecurityGroupIds: !Ref SecurityGroups
+      AllocatedStorage: 200
+      KmsKeyId: !Ref DmsKmsKey
+      EngineVersion: 3.4.6
+      ReplicationInstanceIdentifier: rx-gbs-datalake-ongoing-replication-s3-instance
+      Tags:
+        - Key: Name
+          Value: rx-gbs-datalake-ongoing-replication-s3-instance
+        - Key: rx:billing:finance-activity-id
+          Value: !FindInMap
+            - !Ref 'AWS::AccountId'
+            - Tags
+            - FinanceActivityId
+        - Key: rx:billing:finance-entity-id
+          Value: !FindInMap
+            - !Ref 'AWS::AccountId'
+            - Tags
+            - FinanceEntityId
+        - Key: rx:billing:finance-management-centre-id
+          Value: !FindInMap
+            - !Ref 'AWS::AccountId'
+            - Tags
+            - FinanceManagementCentreId
+        - Key: rx:billing:jira-project-code
+          Value: !FindInMap
+            - !Ref 'AWS::AccountId'
+            - Tags
+            - JiraProjectCode
+        - Key: rx:billing:pm-programme
+          Value: !FindInMap
+            - !Ref 'AWS::AccountId'
+            - Tags
+            - PmProgramme
+        - Key: rx:billing:pm-project-code
+          Value: !FindInMap
+            - !Ref 'AWS::AccountId'
+            - Tags
+            - PmProjectCode
+        - Key: rx:billing:environment-name
+          Value: !FindInMap
+            - !Ref 'AWS::AccountId'
+            - Tags
+            - BillingEnvironmentName
+
+  DMSReplicationOnlyCDCEmailSendInstance:
+    Condition: CreateReplicationInstanceResources
+    DependsOn: ReplicationInstanceSubnetGroup
+    Type: "AWS::DMS::ReplicationInstance"
+    Properties:
+      ReplicationInstanceClass: dms.t3.micro
+      PubliclyAccessible: false
+      MultiAZ: false
+      PreferredMaintenanceWindow: sat:03:48-sat:04:48
+      ReplicationSubnetGroupIdentifier: !Ref ReplicationInstanceSubnetGroup
+      VpcSecurityGroupIds: !Ref SecurityGroups
+      AllocatedStorage: 200
+      KmsKeyId: !Ref DmsKmsKey
+      EngineVersion: 3.4.6
+      ReplicationInstanceIdentifier: rx-gbs-datalake-ongoing-replication-emailsend-s3-instance
+      Tags:
+        - Key: Name
+          Value: rx-gbs-datalake-ongoing-replication-emailsend-s3-instance
+        - Key: rx:billing:finance-activity-id
+          Value: !FindInMap
+            - !Ref 'AWS::AccountId'
+            - Tags
+            - FinanceActivityId
+        - Key: rx:billing:finance-entity-id
+          Value: !FindInMap
+            - !Ref 'AWS::AccountId'
+            - Tags
+            - FinanceEntityId
+        - Key: rx:billing:finance-management-centre-id
+          Value: !FindInMap
+            - !Ref 'AWS::AccountId'
+            - Tags
+            - FinanceManagementCentreId
+        - Key: rx:billing:jira-project-code
+          Value: !FindInMap
+            - !Ref 'AWS::AccountId'
+            - Tags
+            - JiraProjectCode
+        - Key: rx:billing:pm-programme
+          Value: !FindInMap
+            - !Ref 'AWS::AccountId'
+            - Tags
+            - PmProgramme
+        - Key: rx:billing:pm-project-code
+          Value: !FindInMap
+            - !Ref 'AWS::AccountId'
+            - Tags
+            - PmProjectCode
+        - Key: rx:billing:environment-name
+          Value: !FindInMap
+            - !Ref 'AWS::AccountId'
+            - Tags
+            - BillingEnvironmentName
+
+  DMSReplicationOnlyCDCDWOBIEEInstance:
+    Condition: CreateReplicationInstanceResources
+    DependsOn: ReplicationInstanceSubnetGroup
+    Type: "AWS::DMS::ReplicationInstance"
+    Properties:
+      ReplicationInstanceClass: dms.t3.micro
+      PubliclyAccessible: false
+      MultiAZ: false
+      PreferredMaintenanceWindow: sat:03:48-sat:04:48
+      ReplicationSubnetGroupIdentifier: !Ref ReplicationInstanceSubnetGroup
+      VpcSecurityGroupIds: !Ref SecurityGroups
+      AllocatedStorage: 200
+      KmsKeyId: !Ref DmsKmsKey
+      EngineVersion: 3.4.6
+      ReplicationInstanceIdentifier: rx-gbs-datalake-ongoing-replication-dw-obiee-s3-instance
+      Tags:
+        - Key: Name
+          Value: rx-gbs-datalake-ongoing-replication-dw-obiee-s3-instance
+        - Key: rx:billing:finance-activity-id
+          Value: !FindInMap
+            - !Ref 'AWS::AccountId'
+            - Tags
+            - FinanceActivityId
+        - Key: rx:billing:finance-entity-id
+          Value: !FindInMap
+            - !Ref 'AWS::AccountId'
+            - Tags
+            - FinanceEntityId
+        - Key: rx:billing:finance-management-centre-id
+          Value: !FindInMap
+            - !Ref 'AWS::AccountId'
+            - Tags
+            - FinanceManagementCentreId
+        - Key: rx:billing:jira-project-code
+          Value: !FindInMap
+            - !Ref 'AWS::AccountId'
+            - Tags
+            - JiraProjectCode
+        - Key: rx:billing:pm-programme
+          Value: !FindInMap
+            - !Ref 'AWS::AccountId'
+            - Tags
+            - PmProgramme
+        - Key: rx:billing:pm-project-code
+          Value: !FindInMap
+            - !Ref 'AWS::AccountId'
+            - Tags
+            - PmProjectCode
+        - Key: rx:billing:environment-name
+          Value: !FindInMap
+            - !Ref 'AWS::AccountId'
+            - Tags
+            - BillingEnvironmentName
+
+  DmsEndpointSource1:
+    Condition: CreateSourceEndpointResources
+    Type: AWS::DMS::Endpoint
+    Properties:
+      DatabaseName: !Ref SourceDataBase
+      EndpointType: 'source'
+      EngineName: !Ref SourceDataBaseEngine
+      ServerName: !Ref SourceDataBaseServerName
+      Port: !Ref SourceDataBasePort
+      Username: !Ref SourceDataBaseUserName
+      Password: !Ref SourceDataBasePassword
+      ExtraConnectionAttributes: !Ref SourceExtraConnectionAttributes1
+      EndpointIdentifier: !Sub 'rx-gbs-datalake-${BillingEnvironmentName}-oracle-edw-s3-ps'
+      Tags:
+        - Key: Name
+          Value: !Sub 'rx-gbs-datalake-${BillingEnvironmentName}-oracle-edw-ps'
+        - Key: rx:billing:finance-activity-id
+          Value: !FindInMap
+            - !Ref 'AWS::AccountId'
+            - Tags
+            - FinanceActivityId
+        - Key: rx:billing:finance-entity-id
+          Value: !FindInMap
+            - !Ref 'AWS::AccountId'
+            - Tags
+            - FinanceEntityId
+        - Key: rx:billing:finance-management-centre-id
+          Value: !FindInMap
+            - !Ref 'AWS::AccountId'
+            - Tags
+            - FinanceManagementCentreId
+        - Key: rx:billing:jira-project-code
+          Value: !FindInMap
+            - !Ref 'AWS::AccountId'
+            - Tags
+            - JiraProjectCode
+        - Key: rx:billing:pm-programme
+          Value: !FindInMap
+            - !Ref 'AWS::AccountId'
+            - Tags
+            - PmProgramme
+        - Key: rx:billing:pm-project-code
+          Value: !FindInMap
+            - !Ref 'AWS::AccountId'
+            - Tags
+            - PmProjectCode
+        - Key: rx:billing:environment-name
+          Value: !FindInMap
+            - !Ref 'AWS::AccountId'
+            - Tags
+            - BillingEnvironmentName
+
+  DmsEndpointSource2:
+    Condition: CreateSourceEndpointResources
+    Type: AWS::DMS::Endpoint
+    Properties:
+      DatabaseName: !Ref SourceDataBase
+      EndpointType: 'source'
+      EngineName: !Ref SourceDataBaseEngine
+      ServerName: !Ref SourceDataBaseServerName
+      Port: !Ref SourceDataBasePort
+      Username: !Ref SourceDataBaseUserName
+      Password: !Ref SourceDataBasePassword
+      ExtraConnectionAttributes: !Ref SourceExtraConnectionAttributes2
+      EndpointIdentifier: !Sub 'rx-gbs-datalake-${BillingEnvironmentName}-oracle-edw-s3-dw-obiee-emailsend'
+      Tags:
+        - Key: Name
+          Value: !Sub 'rx-gbs-datalake-${BillingEnvironmentName}-oracle-edw-s3-dw-obiee-emailsend'
+        - Key: rx:billing:finance-activity-id
+          Value: !FindInMap
+            - !Ref 'AWS::AccountId'
+            - Tags
+            - FinanceActivityId
+        - Key: rx:billing:finance-entity-id
+          Value: !FindInMap
+            - !Ref 'AWS::AccountId'
+            - Tags
+            - FinanceEntityId
+        - Key: rx:billing:finance-management-centre-id
+          Value: !FindInMap
+            - !Ref 'AWS::AccountId'
+            - Tags
+            - FinanceManagementCentreId
+        - Key: rx:billing:jira-project-code
+          Value: !FindInMap
+            - !Ref 'AWS::AccountId'
+            - Tags
+            - JiraProjectCode
+        - Key: rx:billing:pm-programme
+          Value: !FindInMap
+            - !Ref 'AWS::AccountId'
+            - Tags
+            - PmProgramme
+        - Key: rx:billing:pm-project-code
+          Value: !FindInMap
+            - !Ref 'AWS::AccountId'
+            - Tags
+            - PmProjectCode
+        - Key: rx:billing:environment-name
+          Value: !FindInMap
+            - !Ref 'AWS::AccountId'
+            - Tags
+            - BillingEnvironmentName
+
+  DmsEndpointSource3:
+    Condition: CreateSourceEndpointResources
+    Type: AWS::DMS::Endpoint
+    Properties:
+      DatabaseName: !Ref SourceDataBase2
+      EndpointType: 'source'
+      EngineName: !Ref SourceDataBaseEngine2
+      ServerName: !Ref SourceDataBaseServerName2
+      Port: !Ref SourceDataBasePort2
+      Username: !Ref SourceDataBaseUserName2
+      Password: !Ref SourceDataBasePassword2
+      ExtraConnectionAttributes: !Ref SourceExtraConnectionAttributes3
+      EndpointIdentifier: !Sub 'rx-gbs-datalake-${BillingEnvironmentName}-oracle-datalake-s3'
+      Tags:
+        - Key: Name
+          Value: !Sub 'rx-gbs-datalake-${BillingEnvironmentName}-oracle-datalake-s3'
+        - Key: rx:billing:finance-activity-id
+          Value: !FindInMap
+            - !Ref 'AWS::AccountId'
+            - Tags
+            - FinanceActivityId
+        - Key: rx:billing:finance-entity-id
+          Value: !FindInMap
+            - !Ref 'AWS::AccountId'
+            - Tags
+            - FinanceEntityId
+        - Key: rx:billing:finance-management-centre-id
+          Value: !FindInMap
+            - !Ref 'AWS::AccountId'
+            - Tags
+            - FinanceManagementCentreId
+        - Key: rx:billing:jira-project-code
+          Value: !FindInMap
+            - !Ref 'AWS::AccountId'
+            - Tags
+            - JiraProjectCode
+        - Key: rx:billing:pm-programme
+          Value: !FindInMap
+            - !Ref 'AWS::AccountId'
+            - Tags
+            - PmProgramme
+        - Key: rx:billing:pm-project-code
+          Value: !FindInMap
+            - !Ref 'AWS::AccountId'
+            - Tags
+            - PmProjectCode
+        - Key: rx:billing:environment-name
+          Value: !FindInMap
+            - !Ref 'AWS::AccountId'
+            - Tags
+            - BillingEnvironmentName
+
+  DmsEndpointLandingZoneTarget:
+    Condition: CreateDestinationEndpointResources
+    Type: AWS::DMS::Endpoint
+    Properties:
+      EngineName: !Ref TargetEngineNameForS3
+      EndpointType: 'target'
+      S3Settings:
+        BucketName: !Ref TargetS3BucketName
+        ServiceAccessRoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/rx-gbs-datalake-dms-access-to-s3
+      ExtraConnectionAttributes: !Ref TargetS3ExtraConnectionAttributes
+      EndpointIdentifier: !Sub 'rx-gbs-datalake-${BillingEnvironmentName}-oracle-edw-s3-landingzone'
+      Tags:
+        - Key: Name
+          Value: !Sub 'rx-gbs-datalake-${BillingEnvironmentName}-oracle-edw-s3-landingzone'
+        - Key: rx:billing:finance-activity-id
+          Value: !FindInMap
+            - !Ref 'AWS::AccountId'
+            - Tags
+            - FinanceActivityId
+        - Key: rx:billing:finance-entity-id
+          Value: !FindInMap
+            - !Ref 'AWS::AccountId'
+            - Tags
+            - FinanceEntityId
+        - Key: rx:billing:finance-management-centre-id
+          Value: !FindInMap
+            - !Ref 'AWS::AccountId'
+            - Tags
+            - FinanceManagementCentreId
+        - Key: rx:billing:jira-project-code
+          Value: !FindInMap
+            - !Ref 'AWS::AccountId'
+            - Tags
+            - JiraProjectCode
+        - Key: rx:billing:pm-programme
+          Value: !FindInMap
+            - !Ref 'AWS::AccountId'
+            - Tags
+            - PmProgramme
+        - Key: rx:billing:pm-project-code
+          Value: !FindInMap
+            - !Ref 'AWS::AccountId'
+            - Tags
+            - PmProjectCode
+        - Key: rx:billing:environment-name
+          Value: !FindInMap
+            - !Ref 'AWS::AccountId'
+            - Tags
+            - BillingEnvironmentName
+
+  DmsEndpointRawZoneTarget:
+    Condition: CreateRawDestinationEndpointResources
+    Type: AWS::DMS::Endpoint
+    Properties:
+      EngineName: !Ref TargetEngineNameForS3
+      EndpointType: 'target'
+      S3Settings:
+        BucketName: !Ref TargetS3RawBucketName
+        ServiceAccessRoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/rx-gbs-datalake-dms-access-to-s3
+      ExtraConnectionAttributes: !Ref TargetS3RawExtraConnectionAttributes
+      EndpointIdentifier: !Sub 'rx-gbs-datalake-${BillingEnvironmentName}-oracle-emailsend-s3-rawzone'
+      Tags:
+        - Key: Name
+          Value: !Sub 'rx-gbs-datalake-${BillingEnvironmentName}-oracle-emailsend-s3-rawzone'
+        - Key: rx:billing:finance-activity-id
+          Value: !FindInMap
+            - !Ref 'AWS::AccountId'
+            - Tags
+            - FinanceActivityId
+        - Key: rx:billing:finance-entity-id
+          Value: !FindInMap
+            - !Ref 'AWS::AccountId'
+            - Tags
+            - FinanceEntityId
+        - Key: rx:billing:finance-management-centre-id
+          Value: !FindInMap
+            - !Ref 'AWS::AccountId'
+            - Tags
+            - FinanceManagementCentreId
+        - Key: rx:billing:jira-project-code
+          Value: !FindInMap
+            - !Ref 'AWS::AccountId'
+            - Tags
+            - JiraProjectCode
+        - Key: rx:billing:pm-programme
+          Value: !FindInMap
+            - !Ref 'AWS::AccountId'
+            - Tags
+            - PmProgramme
+        - Key: rx:billing:pm-project-code
+          Value: !FindInMap
+            - !Ref 'AWS::AccountId'
+            - Tags
+            - PmProjectCode
+        - Key: rx:billing:environment-name
+          Value: !FindInMap
+            - !Ref 'AWS::AccountId'
+            - Tags
+            - BillingEnvironmentName
+
+  DMSReplicationCDCPS1:
+    Condition: CreateTaskResources
+    DependsOn:
+      - DMSReplicationOnlyCDCInstance
+      - DmsEndpointSource1
+      - DmsEndpointLandingZoneTarget
+    Type: AWS::DMS::ReplicationTask
+    Properties:
+      MigrationType: 'full-load'
+      ReplicationInstanceArn: !Ref DMSReplicationOnlyCDCInstance
+      ReplicationTaskIdentifier: !Sub 'rx-gbs-datalake-${BillingEnvironmentName}-oracle-edw-ps-s3-task1'
+      SourceEndpointArn: !Ref DmsEndpointSource1
+      TargetEndpointArn: !Ref DmsEndpointLandingZoneTarget
+      ReplicationTaskSettings: '{ "TargetMetadata": { "TargetSchema": "", "SupportLobs": true, "FullLobMode": false, "LobChunkSize": 0, "LimitedSizeLobMode": true, "LobMaxSize": 32, "InlineLobMaxSize": 0, "LoadMaxFileSize": 0, "ParallelLoadThreads": 0, "ParallelLoadBufferSize": 0, "BatchApplyEnabled": false, "TaskRecoveryTableEnabled": false, "ParallelLoadQueuesPerThread": 0, "ParallelApplyThreads": 0, "ParallelApplyBufferSize": 0, "ParallelApplyQueuesPerThread": 0 }, "FullLoadSettings": { "TargetTablePrepMode": "TRUNCATE_BEFORE_LOAD", "CreatePkAfterFullLoad": false, "StopTaskCachedChangesApplied": false, "StopTaskCachedChangesNotApplied": false, "MaxFullLoadSubTasks": 8, "TransactionConsistencyTimeout": 600, "CommitRate": 50000 }, "Logging": { "EnableLogging": true, "LogComponents": [ { "Id": "TRANSFORMATION", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "SOURCE_UNLOAD", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "IO", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "TARGET_LOAD", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "PERFORMANCE", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "SOURCE_CAPTURE", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "SORTER", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "REST_SERVER", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "VALIDATOR_EXT", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "TARGET_APPLY", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "TASK_MANAGER", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "TABLES_MANAGER", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "METADATA_MANAGER", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "FILE_FACTORY", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "COMMON", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "ADDONS", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "DATA_STRUCTURE", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "COMMUNICATION", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "FILE_TRANSFER", "Severity": "LOGGER_SEVERITY_DEFAULT" } ], "CloudWatchLogGroup":null, "CloudWatchLogStream": null }, "ControlTablesSettings": { "historyTimeslotInMinutes": 5, "ControlSchema": "config", "HistoryTimeslotInMinutes": 5, "HistoryTableEnabled": false, "SuspendedTablesTableEnabled": false, "StatusTableEnabled": false }, "StreamBufferSettings": { "StreamBufferCount": 3, "StreamBufferSizeInMB": 8, "CtrlStreamBufferSizeInMB": 5 }, "ChangeProcessingDdlHandlingPolicy": { "HandleSourceTableDropped": true, "HandleSourceTableTruncated": true, "HandleSourceTableAltered": true }, "ErrorBehavior": { "DataErrorPolicy": "LOG_ERROR", "DataTruncationErrorPolicy": "LOG_ERROR", "DataErrorEscalationPolicy": "SUSPEND_TABLE", "DataErrorEscalationCount": 0, "TableErrorPolicy": "SUSPEND_TABLE", "TableErrorEscalationPolicy": "STOP_TASK", "TableErrorEscalationCount": 0, "RecoverableErrorCount": -1, "RecoverableErrorInterval": 5, "RecoverableErrorThrottling": true, "RecoverableErrorThrottlingMax": 1800, "RecoverableErrorStopRetryAfterThrottlingMax": true, "ApplyErrorDeletePolicy": "IGNORE_RECORD", "ApplyErrorInsertPolicy": "LOG_ERROR", "ApplyErrorUpdatePolicy": "LOG_ERROR", "ApplyErrorEscalationPolicy": "LOG_ERROR", "ApplyErrorEscalationCount": 0, "ApplyErrorFailOnTruncationDdl": false, "FullLoadIgnoreConflicts": true, "FailOnTransactionConsistencyBreached": false, "FailOnNoTablesCaptured": true }, "ChangeProcessingTuning": { "BatchApplyPreserveTransaction": true, "BatchApplyTimeoutMin": 1, "BatchApplyTimeoutMax": 30, "BatchApplyMemoryLimit": 500, "BatchSplitSize": 0, "MinTransactionSize": 1000, "CommitTimeout": 1, "MemoryLimitTotal": 1024, "MemoryKeepTime": 60, "StatementCacheSize": 50 }, "PostProcessingRules": null, "CharacterSetSettings": null, "LoopbackPreventionSettings": null, "BeforeImageSettings": null }'
+      TableMappings: '{"rules":[{"rule-type":"selection","rule-id":"1","rule-name":"1","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_DELETED_OLI_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"2","rule-name":"2","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_ATTENDANCE_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"transformation","rule-id":"3","rule-name":"3","rule-target":"column","object-locator":{"schema-name":"%","table-name":"%","column-name":"%"},"rule-action":"convert-lowercase","value":null,"old-value":null},{"rule-type":"selection","rule-id":"4","rule-name":"4","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_MKTG_ACT_EMAILSEND_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"transformation","rule-id":"5","rule-name":"5","rule-target":"table","object-locator":{"schema-name":"%","table-name":"%"},"rule-action":"convert-lowercase","value":null,"old-value":null},{"rule-type":"transformation","rule-id":"6","rule-name":"6","rule-target":"schema","object-locator":{"schema-name":"%"},"rule-action":"convert-lowercase","value":null,"old-value":null},{"rule-type":"selection","rule-id":"7","rule-name":"7","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_IPWARMING_BOUNCEBACK_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"8","rule-name":"8","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_ADGROUPDUMP_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"9","rule-name":"9","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_SYN_BUDGET_TEST_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"10","rule-name":"10","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_SYN_SALES_HIST_TEST_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"11","rule-name":"11","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_07042017_SUB_MEMBER_CON_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"12","rule-name":"12","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_07042017_SUB_MEMBER_PER_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"13","rule-name":"13","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_07042017_SUB_MEMBER_LEAD_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"14","rule-name":"14","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_07042017_SUBCSRIPTION_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"15","rule-name":"15","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_07042017_PRI_COMM_CHANN_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"16","rule-name":"16","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_CAMP_MEMB_CON_PS"},"rule-action":"include","filters":[]}]}'
+
+  DMSReplicationCDCPS2:
+    Condition: CreateTaskResources
+    DependsOn:
+      - DMSReplicationOnlyCDCInstance
+      - DmsEndpointSource1
+      - DmsEndpointLandingZoneTarget
+    Type: AWS::DMS::ReplicationTask
+    Properties:
+      MigrationType: 'full-load'
+      ReplicationInstanceArn: !Ref DMSReplicationOnlyCDCInstance
+      ReplicationTaskIdentifier: !Sub 'rx-gbs-datalake-${BillingEnvironmentName}-oracle-edw-ps-s3-task2'
+      SourceEndpointArn: !Ref DmsEndpointSource1
+      TargetEndpointArn: !Ref DmsEndpointLandingZoneTarget
+      ReplicationTaskSettings: '{ "TargetMetadata": { "TargetSchema": "", "SupportLobs": true, "FullLobMode": false, "LobChunkSize": 0, "LimitedSizeLobMode": true, "LobMaxSize": 32, "InlineLobMaxSize": 0, "LoadMaxFileSize": 0, "ParallelLoadThreads": 0, "ParallelLoadBufferSize": 0, "BatchApplyEnabled": false, "TaskRecoveryTableEnabled": false, "ParallelLoadQueuesPerThread": 0, "ParallelApplyThreads": 0, "ParallelApplyBufferSize": 0, "ParallelApplyQueuesPerThread": 0 }, "FullLoadSettings": { "TargetTablePrepMode": "TRUNCATE_BEFORE_LOAD", "CreatePkAfterFullLoad": false, "StopTaskCachedChangesApplied": false, "StopTaskCachedChangesNotApplied": false, "MaxFullLoadSubTasks": 8, "TransactionConsistencyTimeout": 600, "CommitRate": 50000 }, "Logging": { "EnableLogging": true, "LogComponents": [ { "Id": "TRANSFORMATION", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "SOURCE_UNLOAD", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "IO", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "TARGET_LOAD", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "PERFORMANCE", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "SOURCE_CAPTURE", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "SORTER", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "REST_SERVER", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "VALIDATOR_EXT", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "TARGET_APPLY", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "TASK_MANAGER", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "TABLES_MANAGER", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "METADATA_MANAGER", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "FILE_FACTORY", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "COMMON", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "ADDONS", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "DATA_STRUCTURE", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "COMMUNICATION", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "FILE_TRANSFER", "Severity": "LOGGER_SEVERITY_DEFAULT" } ], "CloudWatchLogGroup":null, "CloudWatchLogStream": null }, "ControlTablesSettings": { "historyTimeslotInMinutes": 5, "ControlSchema": "config", "HistoryTimeslotInMinutes": 5, "HistoryTableEnabled": false, "SuspendedTablesTableEnabled": false, "StatusTableEnabled": false }, "StreamBufferSettings": { "StreamBufferCount": 3, "StreamBufferSizeInMB": 8, "CtrlStreamBufferSizeInMB": 5 }, "ChangeProcessingDdlHandlingPolicy": { "HandleSourceTableDropped": true, "HandleSourceTableTruncated": true, "HandleSourceTableAltered": true }, "ErrorBehavior": { "DataErrorPolicy": "LOG_ERROR", "DataTruncationErrorPolicy": "LOG_ERROR", "DataErrorEscalationPolicy": "SUSPEND_TABLE", "DataErrorEscalationCount": 0, "TableErrorPolicy": "SUSPEND_TABLE", "TableErrorEscalationPolicy": "STOP_TASK", "TableErrorEscalationCount": 0, "RecoverableErrorCount": -1, "RecoverableErrorInterval": 5, "RecoverableErrorThrottling": true, "RecoverableErrorThrottlingMax": 1800, "RecoverableErrorStopRetryAfterThrottlingMax": true, "ApplyErrorDeletePolicy": "IGNORE_RECORD", "ApplyErrorInsertPolicy": "LOG_ERROR", "ApplyErrorUpdatePolicy": "LOG_ERROR", "ApplyErrorEscalationPolicy": "LOG_ERROR", "ApplyErrorEscalationCount": 0, "ApplyErrorFailOnTruncationDdl": false, "FullLoadIgnoreConflicts": true, "FailOnTransactionConsistencyBreached": false, "FailOnNoTablesCaptured": true }, "ChangeProcessingTuning": { "BatchApplyPreserveTransaction": true, "BatchApplyTimeoutMin": 1, "BatchApplyTimeoutMax": 30, "BatchApplyMemoryLimit": 500, "BatchSplitSize": 0, "MinTransactionSize": 1000, "CommitTimeout": 1, "MemoryLimitTotal": 1024, "MemoryKeepTime": 60, "StatementCacheSize": 50 }, "PostProcessingRules": null, "CharacterSetSettings": null, "LoopbackPreventionSettings": null, "BeforeImageSettings": null }'
+      TableMappings: '{"rules":[{"rule-type":"selection","rule-id":"1","rule-name":"1","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_DELETED_OLI_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"2","rule-name":"2","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_ATTENDANCE_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"transformation","rule-id":"3","rule-name":"3","rule-target":"column","object-locator":{"schema-name":"%","table-name":"%","column-name":"%"},"rule-action":"convert-lowercase","value":null,"old-value":null},{"rule-type":"selection","rule-id":"4","rule-name":"4","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_MKTG_ACT_EMAILSEND_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"transformation","rule-id":"5","rule-name":"5","rule-target":"table","object-locator":{"schema-name":"%","table-name":"%"},"rule-action":"convert-lowercase","value":null,"old-value":null},{"rule-type":"transformation","rule-id":"6","rule-name":"6","rule-target":"schema","object-locator":{"schema-name":"%"},"rule-action":"convert-lowercase","value":null,"old-value":null},{"rule-type":"selection","rule-id":"7","rule-name":"7","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_IPWARMING_BOUNCEBACK_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"8","rule-name":"8","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_ADGROUPDUMP_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"9","rule-name":"9","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_SYN_BUDGET_TEST_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"10","rule-name":"10","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_SYN_SALES_HIST_TEST_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"11","rule-name":"11","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_07042017_SUB_MEMBER_CON_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"12","rule-name":"12","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_07042017_SUB_MEMBER_PER_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"13","rule-name":"13","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_07042017_SUB_MEMBER_LEAD_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"14","rule-name":"14","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_07042017_SUBCSRIPTION_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"15","rule-name":"15","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_07042017_PRI_COMM_CHANN_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"16","rule-name":"16","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_CAMPAIGN_PS"},"rule-action":"include","filters":[]},{"rule-type":"selection","rule-id":"17","rule-name":"17","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_CAMPAIGN_%_PS"},"rule-action":"include","filters":[]},{"rule-type":"selection","rule-id":"18","rule-name":"18","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_CAMPAIGN_MEMBER_PERSON_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"19","rule-name":"19","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_COMMUNICATION_CHANNEL_PS"},"rule-action":"include","filters":[]},{"rule-type":"selection","rule-id":"20","rule-name":"20","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_COUNTRY_PS"},"rule-action":"include","filters":[]},{"rule-type":"selection","rule-id":"21","rule-name":"21","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_COUNTRY_PS_TL"},"rule-action":"include","filters":[]},{"rule-type":"selection","rule-id":"22","rule-name":"22","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_CURRENCY%PS"},"rule-action":"include","filters":[]},{"rule-type":"selection","rule-id":"23","rule-name":"23","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_CUSTOMER_ACCOUNT_PS"},"rule-action":"include","filters":[]},{"rule-type":"selection","rule-id":"24","rule-name":"24","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_CUSTOMER_ADDR_PS"},"rule-action":"include","filters":[]}]}'
+
+  DMSReplicationCDCPS3:
+    Condition: CreateTaskResources
+    DependsOn:
+      - DMSReplicationOnlyCDCInstance
+      - DmsEndpointSource1
+      - DmsEndpointLandingZoneTarget
+    Type: AWS::DMS::ReplicationTask
+    Properties:
+      MigrationType: 'full-load'
+      ReplicationInstanceArn: !Ref DMSReplicationOnlyCDCInstance
+      ReplicationTaskIdentifier: !Sub 'rx-gbs-datalake-${BillingEnvironmentName}-oracle-edw-ps-s3-task3'
+      SourceEndpointArn: !Ref DmsEndpointSource1
+      TargetEndpointArn: !Ref DmsEndpointLandingZoneTarget
+      ReplicationTaskSettings: '{ "TargetMetadata": { "TargetSchema": "", "SupportLobs": true, "FullLobMode": false, "LobChunkSize": 0, "LimitedSizeLobMode": true, "LobMaxSize": 32, "InlineLobMaxSize": 0, "LoadMaxFileSize": 0, "ParallelLoadThreads": 0, "ParallelLoadBufferSize": 0, "BatchApplyEnabled": false, "TaskRecoveryTableEnabled": false, "ParallelLoadQueuesPerThread": 0, "ParallelApplyThreads": 0, "ParallelApplyBufferSize": 0, "ParallelApplyQueuesPerThread": 0 }, "FullLoadSettings": { "TargetTablePrepMode": "TRUNCATE_BEFORE_LOAD", "CreatePkAfterFullLoad": false, "StopTaskCachedChangesApplied": false, "StopTaskCachedChangesNotApplied": false, "MaxFullLoadSubTasks": 8, "TransactionConsistencyTimeout": 600, "CommitRate": 50000 }, "Logging": { "EnableLogging": true, "LogComponents": [ { "Id": "TRANSFORMATION", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "SOURCE_UNLOAD", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "IO", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "TARGET_LOAD", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "PERFORMANCE", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "SOURCE_CAPTURE", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "SORTER", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "REST_SERVER", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "VALIDATOR_EXT", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "TARGET_APPLY", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "TASK_MANAGER", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "TABLES_MANAGER", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "METADATA_MANAGER", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "FILE_FACTORY", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "COMMON", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "ADDONS", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "DATA_STRUCTURE", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "COMMUNICATION", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "FILE_TRANSFER", "Severity": "LOGGER_SEVERITY_DEFAULT" } ], "CloudWatchLogGroup":null, "CloudWatchLogStream": null }, "ControlTablesSettings": { "historyTimeslotInMinutes": 5, "ControlSchema": "config", "HistoryTimeslotInMinutes": 5, "HistoryTableEnabled": false, "SuspendedTablesTableEnabled": false, "StatusTableEnabled": false }, "StreamBufferSettings": { "StreamBufferCount": 3, "StreamBufferSizeInMB": 8, "CtrlStreamBufferSizeInMB": 5 }, "ChangeProcessingDdlHandlingPolicy": { "HandleSourceTableDropped": true, "HandleSourceTableTruncated": true, "HandleSourceTableAltered": true }, "ErrorBehavior": { "DataErrorPolicy": "LOG_ERROR", "DataTruncationErrorPolicy": "LOG_ERROR", "DataErrorEscalationPolicy": "SUSPEND_TABLE", "DataErrorEscalationCount": 0, "TableErrorPolicy": "SUSPEND_TABLE", "TableErrorEscalationPolicy": "STOP_TASK", "TableErrorEscalationCount": 0, "RecoverableErrorCount": -1, "RecoverableErrorInterval": 5, "RecoverableErrorThrottling": true, "RecoverableErrorThrottlingMax": 1800, "RecoverableErrorStopRetryAfterThrottlingMax": true, "ApplyErrorDeletePolicy": "IGNORE_RECORD", "ApplyErrorInsertPolicy": "LOG_ERROR", "ApplyErrorUpdatePolicy": "LOG_ERROR", "ApplyErrorEscalationPolicy": "LOG_ERROR", "ApplyErrorEscalationCount": 0, "ApplyErrorFailOnTruncationDdl": false, "FullLoadIgnoreConflicts": true, "FailOnTransactionConsistencyBreached": false, "FailOnNoTablesCaptured": true }, "ChangeProcessingTuning": { "BatchApplyPreserveTransaction": true, "BatchApplyTimeoutMin": 1, "BatchApplyTimeoutMax": 30, "BatchApplyMemoryLimit": 500, "BatchSplitSize": 0, "MinTransactionSize": 1000, "CommitTimeout": 1, "MemoryLimitTotal": 1024, "MemoryKeepTime": 60, "StatementCacheSize": 50 }, "PostProcessingRules": null, "CharacterSetSettings": null, "LoopbackPreventionSettings": null, "BeforeImageSettings": null }'
+      TableMappings: '{"rules":[{"rule-type":"selection","rule-id":"1","rule-name":"1","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_DELETED_OLI_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"2","rule-name":"2","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_ATTENDANCE_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"transformation","rule-id":"3","rule-name":"3","rule-target":"column","object-locator":{"schema-name":"%","table-name":"%","column-name":"%"},"rule-action":"convert-lowercase","value":null,"old-value":null},{"rule-type":"selection","rule-id":"4","rule-name":"4","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_MKTG_ACT_EMAILSEND_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"transformation","rule-id":"5","rule-name":"5","rule-target":"table","object-locator":{"schema-name":"%","table-name":"%"},"rule-action":"convert-lowercase","value":null,"old-value":null},{"rule-type":"transformation","rule-id":"6","rule-name":"6","rule-target":"schema","object-locator":{"schema-name":"%"},"rule-action":"convert-lowercase","value":null,"old-value":null},{"rule-type":"selection","rule-id":"7","rule-name":"7","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_IPWARMING_BOUNCEBACK_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"8","rule-name":"8","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_ADGROUPDUMP_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"9","rule-name":"9","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_SYN_BUDGET_TEST_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"10","rule-name":"10","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_SYN_SALES_HIST_TEST_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"11","rule-name":"11","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_07042017_SUB_MEMBER_CON_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"12","rule-name":"12","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_07042017_SUB_MEMBER_PER_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"13","rule-name":"13","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_07042017_SUB_MEMBER_LEAD_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"14","rule-name":"14","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_07042017_SUBCSRIPTION_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"15","rule-name":"15","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_07042017_PRI_COMM_CHANN_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"16","rule-name":"16","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_CUSTOMER_ADDR_PS_TL"},"rule-action":"include","filters":[]},{"rule-type":"selection","rule-id":"17","rule-name":"17","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_CUSTOMER_CONTACT_PS"},"rule-action":"include","filters":[]},{"rule-type":"selection","rule-id":"18","rule-name":"18","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_CUSTOMER_ORG_PS_TL"},"rule-action":"include","filters":[]},{"rule-type":"selection","rule-id":"19","rule-name":"19","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_CUSTOMER_ORG%PS"},"rule-action":"include","filters":[]},{"rule-type":"selection","rule-id":"20","rule-name":"20","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_CUSTOMER_ORG_HIERARCHY_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"21","rule-name":"21","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_CUSTOMER_PERSON_PS"},"rule-action":"include","filters":[]}]}'
+
+  DMSReplicationCDCPS4:
+    Condition: CreateTaskResources
+    DependsOn:
+      - DMSReplicationOnlyCDCInstance
+      - DmsEndpointSource1
+      - DmsEndpointLandingZoneTarget
+    Type: AWS::DMS::ReplicationTask
+    Properties:
+      MigrationType: 'full-load'
+      ReplicationInstanceArn: !Ref DMSReplicationOnlyCDCInstance
+      ReplicationTaskIdentifier: !Sub 'rx-gbs-datalake-${BillingEnvironmentName}-oracle-edw-ps-s3-task4'
+      SourceEndpointArn: !Ref DmsEndpointSource1
+      TargetEndpointArn: !Ref DmsEndpointLandingZoneTarget
+      ReplicationTaskSettings: '{ "TargetMetadata": { "TargetSchema": "", "SupportLobs": true, "FullLobMode": false, "LobChunkSize": 0, "LimitedSizeLobMode": true, "LobMaxSize": 32, "InlineLobMaxSize": 0, "LoadMaxFileSize": 0, "ParallelLoadThreads": 0, "ParallelLoadBufferSize": 0, "BatchApplyEnabled": false, "TaskRecoveryTableEnabled": false, "ParallelLoadQueuesPerThread": 0, "ParallelApplyThreads": 0, "ParallelApplyBufferSize": 0, "ParallelApplyQueuesPerThread": 0 }, "FullLoadSettings": { "TargetTablePrepMode": "TRUNCATE_BEFORE_LOAD", "CreatePkAfterFullLoad": false, "StopTaskCachedChangesApplied": false, "StopTaskCachedChangesNotApplied": false, "MaxFullLoadSubTasks": 8, "TransactionConsistencyTimeout": 600, "CommitRate": 50000 }, "Logging": { "EnableLogging": true, "LogComponents": [ { "Id": "TRANSFORMATION", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "SOURCE_UNLOAD", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "IO", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "TARGET_LOAD", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "PERFORMANCE", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "SOURCE_CAPTURE", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "SORTER", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "REST_SERVER", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "VALIDATOR_EXT", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "TARGET_APPLY", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "TASK_MANAGER", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "TABLES_MANAGER", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "METADATA_MANAGER", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "FILE_FACTORY", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "COMMON", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "ADDONS", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "DATA_STRUCTURE", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "COMMUNICATION", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "FILE_TRANSFER", "Severity": "LOGGER_SEVERITY_DEFAULT" } ], "CloudWatchLogGroup":null, "CloudWatchLogStream": null }, "ControlTablesSettings": { "historyTimeslotInMinutes": 5, "ControlSchema": "config", "HistoryTimeslotInMinutes": 5, "HistoryTableEnabled": false, "SuspendedTablesTableEnabled": false, "StatusTableEnabled": false }, "StreamBufferSettings": { "StreamBufferCount": 3, "StreamBufferSizeInMB": 8, "CtrlStreamBufferSizeInMB": 5 }, "ChangeProcessingDdlHandlingPolicy": { "HandleSourceTableDropped": true, "HandleSourceTableTruncated": true, "HandleSourceTableAltered": true }, "ErrorBehavior": { "DataErrorPolicy": "LOG_ERROR", "DataTruncationErrorPolicy": "LOG_ERROR", "DataErrorEscalationPolicy": "SUSPEND_TABLE", "DataErrorEscalationCount": 0, "TableErrorPolicy": "SUSPEND_TABLE", "TableErrorEscalationPolicy": "STOP_TASK", "TableErrorEscalationCount": 0, "RecoverableErrorCount": -1, "RecoverableErrorInterval": 5, "RecoverableErrorThrottling": true, "RecoverableErrorThrottlingMax": 1800, "RecoverableErrorStopRetryAfterThrottlingMax": true, "ApplyErrorDeletePolicy": "IGNORE_RECORD", "ApplyErrorInsertPolicy": "LOG_ERROR", "ApplyErrorUpdatePolicy": "LOG_ERROR", "ApplyErrorEscalationPolicy": "LOG_ERROR", "ApplyErrorEscalationCount": 0, "ApplyErrorFailOnTruncationDdl": false, "FullLoadIgnoreConflicts": true, "FailOnTransactionConsistencyBreached": false, "FailOnNoTablesCaptured": true }, "ChangeProcessingTuning": { "BatchApplyPreserveTransaction": true, "BatchApplyTimeoutMin": 1, "BatchApplyTimeoutMax": 30, "BatchApplyMemoryLimit": 500, "BatchSplitSize": 0, "MinTransactionSize": 1000, "CommitTimeout": 1, "MemoryLimitTotal": 1024, "MemoryKeepTime": 60, "StatementCacheSize": 50 }, "PostProcessingRules": null, "CharacterSetSettings": null, "LoopbackPreventionSettings": null, "BeforeImageSettings": null }'
+      TableMappings: '{"rules":[{"rule-type":"selection","rule-id":"1","rule-name":"1","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_DELETED_OLI_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"2","rule-name":"2","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_ATTENDANCE_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"transformation","rule-id":"3","rule-name":"3","rule-target":"column","object-locator":{"schema-name":"%","table-name":"%","column-name":"%"},"rule-action":"convert-lowercase","value":null,"old-value":null},{"rule-type":"selection","rule-id":"4","rule-name":"4","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_MKTG_ACT_EMAILSEND_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"transformation","rule-id":"5","rule-name":"5","rule-target":"table","object-locator":{"schema-name":"%","table-name":"%"},"rule-action":"convert-lowercase","value":null,"old-value":null},{"rule-type":"transformation","rule-id":"6","rule-name":"6","rule-target":"schema","object-locator":{"schema-name":"%"},"rule-action":"convert-lowercase","value":null,"old-value":null},{"rule-type":"selection","rule-id":"7","rule-name":"7","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_IPWARMING_BOUNCEBACK_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"8","rule-name":"8","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_ADGROUPDUMP_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"9","rule-name":"9","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_SYN_BUDGET_TEST_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"10","rule-name":"10","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_SYN_SALES_HIST_TEST_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"11","rule-name":"11","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_07042017_SUB_MEMBER_CON_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"12","rule-name":"12","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_07042017_SUB_MEMBER_PER_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"13","rule-name":"13","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_07042017_SUB_MEMBER_LEAD_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"14","rule-name":"14","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_07042017_SUBCSRIPTION_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"15","rule-name":"15","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_07042017_PRI_COMM_CHANN_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"16","rule-name":"16","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_EAI_VALUES_PS"},"rule-action":"include","filters":[]},{"rule-type":"selection","rule-id":"17","rule-name":"17","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_ELQ_CONTACTS_PS"},"rule-action":"include","filters":[]},{"rule-type":"selection","rule-id":"18","rule-name":"18","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_EMAIL_PS"},"rule-action":"include","filters":[]},{"rule-type":"selection","rule-id":"19","rule-name":"19","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_EVENT%PS"},"rule-action":"include","filters":[]},{"rule-type":"selection","rule-id":"20","rule-name":"20","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_EVENT_PS_TL"},"rule-action":"include","filters":[]},{"rule-type":"selection","rule-id":"21","rule-name":"21","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_EVENT_OPERATE_UNIT_OVRD_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"22","rule-name":"22","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_EXHIBITOR_%_PS"},"rule-action":"include","filters":[]},{"rule-type":"selection","rule-id":"23","rule-name":"23","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_FLOORPLAN_STAND_PS"},"rule-action":"include","filters":[]},{"rule-type":"selection","rule-id":"24","rule-name":"24","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_GEOGRAPHIC%"},"rule-action":"include","filters":[]},{"rule-type":"selection","rule-id":"25","rule-name":"25","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_GLOBAL_GROUP_PS"},"rule-action":"include","filters":[]},{"rule-type":"selection","rule-id":"26","rule-name":"26","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_INDUSTRY%"},"rule-action":"include","filters":[]},{"rule-type":"selection","rule-id":"27","rule-name":"27","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_ISG_%_PS"},"rule-action":"include","filters":[]},{"rule-type":"selection","rule-id":"28","rule-name":"28","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_LANGUAGE_PS"},"rule-action":"include","filters":[]},{"rule-type":"selection","rule-id":"29","rule-name":"29","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_LEAD_PS"},"rule-action":"include","filters":[]},{"rule-type":"selection","rule-id":"30","rule-name":"30","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_MANAGEMENT_%_PS"},"rule-action":"include","filters":[]},{"rule-type":"selection","rule-id":"31","rule-name":"31","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_MKTG_%_PS"},"rule-action":"include","filters":[]}]}'
+
+  DMSReplicationCDCPS5:
+    Condition: CreateTaskResources
+    DependsOn:
+      - DMSReplicationOnlyCDCInstance
+      - DmsEndpointSource1
+      - DmsEndpointLandingZoneTarget
+    Type: AWS::DMS::ReplicationTask
+    Properties:
+      MigrationType: 'full-load'
+      ReplicationInstanceArn: !Ref DMSReplicationOnlyCDCInstance
+      ReplicationTaskIdentifier: !Sub 'rx-gbs-datalake-${BillingEnvironmentName}-oracle-edw-ps-s3-task5'
+      SourceEndpointArn: !Ref DmsEndpointSource1
+      TargetEndpointArn: !Ref DmsEndpointLandingZoneTarget
+      ReplicationTaskSettings: '{ "TargetMetadata": { "TargetSchema": "", "SupportLobs": true, "FullLobMode": false, "LobChunkSize": 0, "LimitedSizeLobMode": true, "LobMaxSize": 32, "InlineLobMaxSize": 0, "LoadMaxFileSize": 0, "ParallelLoadThreads": 0, "ParallelLoadBufferSize": 0, "BatchApplyEnabled": false, "TaskRecoveryTableEnabled": false, "ParallelLoadQueuesPerThread": 0, "ParallelApplyThreads": 0, "ParallelApplyBufferSize": 0, "ParallelApplyQueuesPerThread": 0 }, "FullLoadSettings": { "TargetTablePrepMode": "TRUNCATE_BEFORE_LOAD", "CreatePkAfterFullLoad": false, "StopTaskCachedChangesApplied": false, "StopTaskCachedChangesNotApplied": false, "MaxFullLoadSubTasks": 8, "TransactionConsistencyTimeout": 600, "CommitRate": 50000 }, "Logging": { "EnableLogging": true, "LogComponents": [ { "Id": "TRANSFORMATION", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "SOURCE_UNLOAD", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "IO", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "TARGET_LOAD", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "PERFORMANCE", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "SOURCE_CAPTURE", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "SORTER", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "REST_SERVER", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "VALIDATOR_EXT", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "TARGET_APPLY", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "TASK_MANAGER", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "TABLES_MANAGER", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "METADATA_MANAGER", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "FILE_FACTORY", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "COMMON", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "ADDONS", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "DATA_STRUCTURE", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "COMMUNICATION", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "FILE_TRANSFER", "Severity": "LOGGER_SEVERITY_DEFAULT" } ], "CloudWatchLogGroup":null, "CloudWatchLogStream": null }, "ControlTablesSettings": { "historyTimeslotInMinutes": 5, "ControlSchema": "config", "HistoryTimeslotInMinutes": 5, "HistoryTableEnabled": false, "SuspendedTablesTableEnabled": false, "StatusTableEnabled": false }, "StreamBufferSettings": { "StreamBufferCount": 3, "StreamBufferSizeInMB": 8, "CtrlStreamBufferSizeInMB": 5 }, "ChangeProcessingDdlHandlingPolicy": { "HandleSourceTableDropped": true, "HandleSourceTableTruncated": true, "HandleSourceTableAltered": true }, "ErrorBehavior": { "DataErrorPolicy": "LOG_ERROR", "DataTruncationErrorPolicy": "LOG_ERROR", "DataErrorEscalationPolicy": "SUSPEND_TABLE", "DataErrorEscalationCount": 0, "TableErrorPolicy": "SUSPEND_TABLE", "TableErrorEscalationPolicy": "STOP_TASK", "TableErrorEscalationCount": 0, "RecoverableErrorCount": -1, "RecoverableErrorInterval": 5, "RecoverableErrorThrottling": true, "RecoverableErrorThrottlingMax": 1800, "RecoverableErrorStopRetryAfterThrottlingMax": true, "ApplyErrorDeletePolicy": "IGNORE_RECORD", "ApplyErrorInsertPolicy": "LOG_ERROR", "ApplyErrorUpdatePolicy": "LOG_ERROR", "ApplyErrorEscalationPolicy": "LOG_ERROR", "ApplyErrorEscalationCount": 0, "ApplyErrorFailOnTruncationDdl": false, "FullLoadIgnoreConflicts": true, "FailOnTransactionConsistencyBreached": false, "FailOnNoTablesCaptured": true }, "ChangeProcessingTuning": { "BatchApplyPreserveTransaction": true, "BatchApplyTimeoutMin": 1, "BatchApplyTimeoutMax": 30, "BatchApplyMemoryLimit": 500, "BatchSplitSize": 0, "MinTransactionSize": 1000, "CommitTimeout": 1, "MemoryLimitTotal": 1024, "MemoryKeepTime": 60, "StatementCacheSize": 50 }, "PostProcessingRules": null, "CharacterSetSettings": null, "LoopbackPreventionSettings": null, "BeforeImageSettings": null }'
+      TableMappings: '{"rules":[{"rule-type":"selection","rule-id":"1","rule-name":"1","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_DELETED_OLI_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"2","rule-name":"2","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_ATTENDANCE_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"transformation","rule-id":"3","rule-name":"3","rule-target":"column","object-locator":{"schema-name":"%","table-name":"%","column-name":"%"},"rule-action":"convert-lowercase","value":null,"old-value":null},{"rule-type":"selection","rule-id":"4","rule-name":"4","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_MKTG_ACT_EMAILSEND_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"transformation","rule-id":"5","rule-name":"5","rule-target":"table","object-locator":{"schema-name":"%","table-name":"%"},"rule-action":"convert-lowercase","value":null,"old-value":null},{"rule-type":"transformation","rule-id":"6","rule-name":"6","rule-target":"schema","object-locator":{"schema-name":"%"},"rule-action":"convert-lowercase","value":null,"old-value":null},{"rule-type":"selection","rule-id":"7","rule-name":"7","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_IPWARMING_BOUNCEBACK_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"8","rule-name":"8","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_ADGROUPDUMP_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"9","rule-name":"9","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_SYN_BUDGET_TEST_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"10","rule-name":"10","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_SYN_SALES_HIST_TEST_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"11","rule-name":"11","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_07042017_SUB_MEMBER_CON_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"12","rule-name":"12","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_07042017_SUB_MEMBER_PER_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"13","rule-name":"13","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_07042017_SUB_MEMBER_LEAD_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"14","rule-name":"14","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_07042017_SUBCSRIPTION_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"15","rule-name":"15","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_07042017_PRI_COMM_CHANN_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"16","rule-name":"16","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_NOVA_PERMISSIONS_PS"},"rule-action":"include","filters":[]},{"rule-type":"selection","rule-id":"17","rule-name":"17","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_O%_PS"},"rule-action":"include","filters":[]},{"rule-type":"selection","rule-id":"18","rule-name":"18","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_PARTICIPANT_%_PS"},"rule-action":"include","filters":[]},{"rule-type":"selection","rule-id":"19","rule-name":"19","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_PARTICIPANT_RELATIONSHIP_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"20","rule-name":"20","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_PARTICIPANT_TYPES_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"21","rule-name":"21","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_PARTICIPANT_%_TL"},"rule-action":"include","filters":[]},{"rule-type":"selection","rule-id":"22","rule-name":"22","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_PERMISSION_PS"},"rule-action":"include","filters":[]},{"rule-type":"selection","rule-id":"23","rule-name":"23","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_PRIVACY_%_PS"},"rule-action":"include","filters":[]},{"rule-type":"selection","rule-id":"24","rule-name":"24","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_PRIVACY_COMM_CHANNEL_HIS_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"25","rule-name":"25","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_PRODUCT%"},"rule-action":"include","filters":[]},{"rule-type":"selection","rule-id":"26","rule-name":"26","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_PRODUCT_CATEGORY_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"27","rule-name":"27","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_PRODUCT_VIEWED_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"28","rule-name":"28","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_PROFILE_ANSWER%"},"rule-action":"include","filters":[]},{"rule-type":"selection","rule-id":"29","rule-name":"29","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_PROFILE_MASTER_PS"},"rule-action":"include","filters":[]},{"rule-type":"selection","rule-id":"30","rule-name":"30","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_PROFILE_MSTR%"},"rule-action":"include","filters":[]},{"rule-type":"selection","rule-id":"31","rule-name":"31","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_PROFILE_PARTICIPANT_TYPE_PS"},"rule-action":"include","filters":[]},{"rule-type":"selection","rule-id":"32","rule-name":"32","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_PROFILE_QUESTION_%"},"rule-action":"include","filters":[]}]}'
+
+  DMSReplicationCDCPS6:
+    Condition: CreateTaskResources
+    DependsOn:
+      - DMSReplicationOnlyCDCInstance
+      - DmsEndpointSource1
+      - DmsEndpointLandingZoneTarget
+    Type: AWS::DMS::ReplicationTask
+    Properties:
+      MigrationType: 'full-load'
+      ReplicationInstanceArn: !Ref DMSReplicationOnlyCDCInstance
+      ReplicationTaskIdentifier: !Sub 'rx-gbs-datalake-${BillingEnvironmentName}-oracle-edw-ps-s3-task6'
+      SourceEndpointArn: !Ref DmsEndpointSource1
+      TargetEndpointArn: !Ref DmsEndpointLandingZoneTarget
+      ReplicationTaskSettings: '{ "TargetMetadata": { "TargetSchema": "", "SupportLobs": true, "FullLobMode": false, "LobChunkSize": 0, "LimitedSizeLobMode": true, "LobMaxSize": 32, "InlineLobMaxSize": 0, "LoadMaxFileSize": 0, "ParallelLoadThreads": 0, "ParallelLoadBufferSize": 0, "BatchApplyEnabled": false, "TaskRecoveryTableEnabled": false, "ParallelLoadQueuesPerThread": 0, "ParallelApplyThreads": 0, "ParallelApplyBufferSize": 0, "ParallelApplyQueuesPerThread": 0 }, "FullLoadSettings": { "TargetTablePrepMode": "TRUNCATE_BEFORE_LOAD", "CreatePkAfterFullLoad": false, "StopTaskCachedChangesApplied": false, "StopTaskCachedChangesNotApplied": false, "MaxFullLoadSubTasks": 8, "TransactionConsistencyTimeout": 600, "CommitRate": 50000 }, "Logging": { "EnableLogging": true, "LogComponents": [ { "Id": "TRANSFORMATION", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "SOURCE_UNLOAD", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "IO", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "TARGET_LOAD", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "PERFORMANCE", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "SOURCE_CAPTURE", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "SORTER", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "REST_SERVER", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "VALIDATOR_EXT", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "TARGET_APPLY", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "TASK_MANAGER", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "TABLES_MANAGER", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "METADATA_MANAGER", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "FILE_FACTORY", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "COMMON", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "ADDONS", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "DATA_STRUCTURE", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "COMMUNICATION", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "FILE_TRANSFER", "Severity": "LOGGER_SEVERITY_DEFAULT" } ], "CloudWatchLogGroup":null, "CloudWatchLogStream": null }, "ControlTablesSettings": { "historyTimeslotInMinutes": 5, "ControlSchema": "config", "HistoryTimeslotInMinutes": 5, "HistoryTableEnabled": false, "SuspendedTablesTableEnabled": false, "StatusTableEnabled": false }, "StreamBufferSettings": { "StreamBufferCount": 3, "StreamBufferSizeInMB": 8, "CtrlStreamBufferSizeInMB": 5 }, "ChangeProcessingDdlHandlingPolicy": { "HandleSourceTableDropped": true, "HandleSourceTableTruncated": true, "HandleSourceTableAltered": true }, "ErrorBehavior": { "DataErrorPolicy": "LOG_ERROR", "DataTruncationErrorPolicy": "LOG_ERROR", "DataErrorEscalationPolicy": "SUSPEND_TABLE", "DataErrorEscalationCount": 0, "TableErrorPolicy": "SUSPEND_TABLE", "TableErrorEscalationPolicy": "STOP_TASK", "TableErrorEscalationCount": 0, "RecoverableErrorCount": -1, "RecoverableErrorInterval": 5, "RecoverableErrorThrottling": true, "RecoverableErrorThrottlingMax": 1800, "RecoverableErrorStopRetryAfterThrottlingMax": true, "ApplyErrorDeletePolicy": "IGNORE_RECORD", "ApplyErrorInsertPolicy": "LOG_ERROR", "ApplyErrorUpdatePolicy": "LOG_ERROR", "ApplyErrorEscalationPolicy": "LOG_ERROR", "ApplyErrorEscalationCount": 0, "ApplyErrorFailOnTruncationDdl": false, "FullLoadIgnoreConflicts": true, "FailOnTransactionConsistencyBreached": false, "FailOnNoTablesCaptured": true }, "ChangeProcessingTuning": { "BatchApplyPreserveTransaction": true, "BatchApplyTimeoutMin": 1, "BatchApplyTimeoutMax": 30, "BatchApplyMemoryLimit": 500, "BatchSplitSize": 0, "MinTransactionSize": 1000, "CommitTimeout": 1, "MemoryLimitTotal": 1024, "MemoryKeepTime": 60, "StatementCacheSize": 50 }, "PostProcessingRules": null, "CharacterSetSettings": null, "LoopbackPreventionSettings": null, "BeforeImageSettings": null }'
+      TableMappings: '{"rules":[{"rule-type":"selection","rule-id":"1","rule-name":"1","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_DELETED_OLI_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"2","rule-name":"2","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_ATTENDANCE_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"transformation","rule-id":"3","rule-name":"3","rule-target":"column","object-locator":{"schema-name":"%","table-name":"%","column-name":"%"},"rule-action":"convert-lowercase","value":null,"old-value":null},{"rule-type":"selection","rule-id":"4","rule-name":"4","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_MKTG_ACT_EMAILSEND_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"transformation","rule-id":"5","rule-name":"5","rule-target":"table","object-locator":{"schema-name":"%","table-name":"%"},"rule-action":"convert-lowercase","value":null,"old-value":null},{"rule-type":"transformation","rule-id":"6","rule-name":"6","rule-target":"schema","object-locator":{"schema-name":"%"},"rule-action":"convert-lowercase","value":null,"old-value":null},{"rule-type":"selection","rule-id":"7","rule-name":"7","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_IPWARMING_BOUNCEBACK_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"8","rule-name":"8","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_ADGROUPDUMP_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"9","rule-name":"9","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_SYN_BUDGET_TEST_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"10","rule-name":"10","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_SYN_SALES_HIST_TEST_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"11","rule-name":"11","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_07042017_SUB_MEMBER_CON_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"12","rule-name":"12","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_07042017_SUB_MEMBER_PER_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"13","rule-name":"13","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_07042017_SUB_MEMBER_LEAD_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"14","rule-name":"14","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_07042017_SUBCSRIPTION_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"15","rule-name":"15","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_07042017_PRI_COMM_CHANN_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"16","rule-name":"16","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_PROFILE_RESPONSE_CONTACT_PS"},"rule-action":"include","filters":[]},{"rule-type":"selection","rule-id":"17","rule-name":"17","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_PROFILE_RESPONSE_LEAD_PS"},"rule-action":"include","filters":[]},{"rule-type":"selection","rule-id":"18","rule-name":"18","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_PROFILE_RESPONSE_ORG_PS"},"rule-action":"include","filters":[]},{"rule-type":"selection","rule-id":"19","rule-name":"19","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_PROFILE_RESPONSE_PCO_PS"},"rule-action":"include","filters":[]},{"rule-type":"selection","rule-id":"20","rule-name":"20","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_PROFILE_RESPONSE_PERSON_PS"},"rule-action":"include","filters":[]},{"rule-type":"selection","rule-id":"21","rule-name":"21","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_PROFILE_RESPONSE_PIN_PS"},"rule-action":"include","filters":[]}]}'
+
+  DMSReplicationCDCPS7:
+    Condition: CreateTaskResources
+    DependsOn:
+      - DMSReplicationOnlyCDCInstance
+      - DmsEndpointSource1
+      - DmsEndpointLandingZoneTarget
+    Type: AWS::DMS::ReplicationTask
+    Properties:
+      MigrationType: 'full-load'
+      ReplicationInstanceArn: !Ref DMSReplicationOnlyCDCInstance
+      ReplicationTaskIdentifier: !Sub 'rx-gbs-datalake-${BillingEnvironmentName}-oracle-edw-ps-s3-task7'
+      SourceEndpointArn: !Ref DmsEndpointSource1
+      TargetEndpointArn: !Ref DmsEndpointLandingZoneTarget
+      ReplicationTaskSettings: '{ "TargetMetadata": { "TargetSchema": "", "SupportLobs": true, "FullLobMode": false, "LobChunkSize": 0, "LimitedSizeLobMode": true, "LobMaxSize": 32, "InlineLobMaxSize": 0, "LoadMaxFileSize": 0, "ParallelLoadThreads": 0, "ParallelLoadBufferSize": 0, "BatchApplyEnabled": false, "TaskRecoveryTableEnabled": false, "ParallelLoadQueuesPerThread": 0, "ParallelApplyThreads": 0, "ParallelApplyBufferSize": 0, "ParallelApplyQueuesPerThread": 0 }, "FullLoadSettings": { "TargetTablePrepMode": "TRUNCATE_BEFORE_LOAD", "CreatePkAfterFullLoad": false, "StopTaskCachedChangesApplied": false, "StopTaskCachedChangesNotApplied": false, "MaxFullLoadSubTasks": 8, "TransactionConsistencyTimeout": 600, "CommitRate": 50000 }, "Logging": { "EnableLogging": true, "LogComponents": [ { "Id": "TRANSFORMATION", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "SOURCE_UNLOAD", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "IO", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "TARGET_LOAD", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "PERFORMANCE", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "SOURCE_CAPTURE", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "SORTER", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "REST_SERVER", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "VALIDATOR_EXT", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "TARGET_APPLY", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "TASK_MANAGER", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "TABLES_MANAGER", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "METADATA_MANAGER", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "FILE_FACTORY", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "COMMON", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "ADDONS", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "DATA_STRUCTURE", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "COMMUNICATION", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "FILE_TRANSFER", "Severity": "LOGGER_SEVERITY_DEFAULT" } ], "CloudWatchLogGroup":null, "CloudWatchLogStream": null }, "ControlTablesSettings": { "historyTimeslotInMinutes": 5, "ControlSchema": "config", "HistoryTimeslotInMinutes": 5, "HistoryTableEnabled": false, "SuspendedTablesTableEnabled": false, "StatusTableEnabled": false }, "StreamBufferSettings": { "StreamBufferCount": 3, "StreamBufferSizeInMB": 8, "CtrlStreamBufferSizeInMB": 5 }, "ChangeProcessingDdlHandlingPolicy": { "HandleSourceTableDropped": true, "HandleSourceTableTruncated": true, "HandleSourceTableAltered": true }, "ErrorBehavior": { "DataErrorPolicy": "LOG_ERROR", "DataTruncationErrorPolicy": "LOG_ERROR", "DataErrorEscalationPolicy": "SUSPEND_TABLE", "DataErrorEscalationCount": 0, "TableErrorPolicy": "SUSPEND_TABLE", "TableErrorEscalationPolicy": "STOP_TASK", "TableErrorEscalationCount": 0, "RecoverableErrorCount": -1, "RecoverableErrorInterval": 5, "RecoverableErrorThrottling": true, "RecoverableErrorThrottlingMax": 1800, "RecoverableErrorStopRetryAfterThrottlingMax": true, "ApplyErrorDeletePolicy": "IGNORE_RECORD", "ApplyErrorInsertPolicy": "LOG_ERROR", "ApplyErrorUpdatePolicy": "LOG_ERROR", "ApplyErrorEscalationPolicy": "LOG_ERROR", "ApplyErrorEscalationCount": 0, "ApplyErrorFailOnTruncationDdl": false, "FullLoadIgnoreConflicts": true, "FailOnTransactionConsistencyBreached": false, "FailOnNoTablesCaptured": true }, "ChangeProcessingTuning": { "BatchApplyPreserveTransaction": true, "BatchApplyTimeoutMin": 1, "BatchApplyTimeoutMax": 30, "BatchApplyMemoryLimit": 500, "BatchSplitSize": 0, "MinTransactionSize": 1000, "CommitTimeout": 1, "MemoryLimitTotal": 1024, "MemoryKeepTime": 60, "StatementCacheSize": 50 }, "PostProcessingRules": null, "CharacterSetSettings": null, "LoopbackPreventionSettings": null, "BeforeImageSettings": null }'
+      TableMappings: '{"rules":[{"rule-type":"selection","rule-id":"1","rule-name":"1","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_DELETED_OLI_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"2","rule-name":"2","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_ATTENDANCE_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"transformation","rule-id":"3","rule-name":"3","rule-target":"column","object-locator":{"schema-name":"%","table-name":"%","column-name":"%"},"rule-action":"convert-lowercase","value":null,"old-value":null},{"rule-type":"selection","rule-id":"4","rule-name":"4","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_MKTG_ACT_EMAILSEND_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"transformation","rule-id":"5","rule-name":"5","rule-target":"table","object-locator":{"schema-name":"%","table-name":"%"},"rule-action":"convert-lowercase","value":null,"old-value":null},{"rule-type":"transformation","rule-id":"6","rule-name":"6","rule-target":"schema","object-locator":{"schema-name":"%"},"rule-action":"convert-lowercase","value":null,"old-value":null},{"rule-type":"selection","rule-id":"7","rule-name":"7","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_IPWARMING_BOUNCEBACK_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"8","rule-name":"8","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_ADGROUPDUMP_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"9","rule-name":"9","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_SYN_BUDGET_TEST_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"10","rule-name":"10","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_SYN_SALES_HIST_TEST_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"11","rule-name":"11","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_07042017_SUB_MEMBER_CON_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"12","rule-name":"12","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_07042017_SUB_MEMBER_PER_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"13","rule-name":"13","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_07042017_SUB_MEMBER_LEAD_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"14","rule-name":"14","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_07042017_SUBCSRIPTION_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"15","rule-name":"15","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_07042017_PRI_COMM_CHANN_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"16","rule-name":"16","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_PROFILE_RESPONSE_PS"},"rule-action":"include","filters":[]}]}'
+
+  DMSReplicationCDCPS8:
+    Condition: CreateTaskResources
+    DependsOn:
+      - DMSReplicationOnlyCDCInstance
+      - DmsEndpointSource1
+      - DmsEndpointLandingZoneTarget
+    Type: AWS::DMS::ReplicationTask
+    Properties:
+      MigrationType: 'full-load'
+      ReplicationInstanceArn: !Ref DMSReplicationOnlyCDCInstance
+      ReplicationTaskIdentifier: !Sub 'rx-gbs-datalake-${BillingEnvironmentName}-oracle-edw-ps-s3-task8'
+      SourceEndpointArn: !Ref DmsEndpointSource1
+      TargetEndpointArn: !Ref DmsEndpointLandingZoneTarget
+      ReplicationTaskSettings: '{ "TargetMetadata": { "TargetSchema": "", "SupportLobs": true, "FullLobMode": false, "LobChunkSize": 0, "LimitedSizeLobMode": true, "LobMaxSize": 32, "InlineLobMaxSize": 0, "LoadMaxFileSize": 0, "ParallelLoadThreads": 0, "ParallelLoadBufferSize": 0, "BatchApplyEnabled": false, "TaskRecoveryTableEnabled": false, "ParallelLoadQueuesPerThread": 0, "ParallelApplyThreads": 0, "ParallelApplyBufferSize": 0, "ParallelApplyQueuesPerThread": 0 }, "FullLoadSettings": { "TargetTablePrepMode": "TRUNCATE_BEFORE_LOAD", "CreatePkAfterFullLoad": false, "StopTaskCachedChangesApplied": false, "StopTaskCachedChangesNotApplied": false, "MaxFullLoadSubTasks": 8, "TransactionConsistencyTimeout": 600, "CommitRate": 50000 }, "Logging": { "EnableLogging": true, "LogComponents": [ { "Id": "TRANSFORMATION", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "SOURCE_UNLOAD", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "IO", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "TARGET_LOAD", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "PERFORMANCE", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "SOURCE_CAPTURE", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "SORTER", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "REST_SERVER", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "VALIDATOR_EXT", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "TARGET_APPLY", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "TASK_MANAGER", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "TABLES_MANAGER", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "METADATA_MANAGER", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "FILE_FACTORY", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "COMMON", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "ADDONS", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "DATA_STRUCTURE", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "COMMUNICATION", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "FILE_TRANSFER", "Severity": "LOGGER_SEVERITY_DEFAULT" } ], "CloudWatchLogGroup":null, "CloudWatchLogStream": null }, "ControlTablesSettings": { "historyTimeslotInMinutes": 5, "ControlSchema": "config", "HistoryTimeslotInMinutes": 5, "HistoryTableEnabled": false, "SuspendedTablesTableEnabled": false, "StatusTableEnabled": false }, "StreamBufferSettings": { "StreamBufferCount": 3, "StreamBufferSizeInMB": 8, "CtrlStreamBufferSizeInMB": 5 }, "ChangeProcessingDdlHandlingPolicy": { "HandleSourceTableDropped": true, "HandleSourceTableTruncated": true, "HandleSourceTableAltered": true }, "ErrorBehavior": { "DataErrorPolicy": "LOG_ERROR", "DataTruncationErrorPolicy": "LOG_ERROR", "DataErrorEscalationPolicy": "SUSPEND_TABLE", "DataErrorEscalationCount": 0, "TableErrorPolicy": "SUSPEND_TABLE", "TableErrorEscalationPolicy": "STOP_TASK", "TableErrorEscalationCount": 0, "RecoverableErrorCount": -1, "RecoverableErrorInterval": 5, "RecoverableErrorThrottling": true, "RecoverableErrorThrottlingMax": 1800, "RecoverableErrorStopRetryAfterThrottlingMax": true, "ApplyErrorDeletePolicy": "IGNORE_RECORD", "ApplyErrorInsertPolicy": "LOG_ERROR", "ApplyErrorUpdatePolicy": "LOG_ERROR", "ApplyErrorEscalationPolicy": "LOG_ERROR", "ApplyErrorEscalationCount": 0, "ApplyErrorFailOnTruncationDdl": false, "FullLoadIgnoreConflicts": true, "FailOnTransactionConsistencyBreached": false, "FailOnNoTablesCaptured": true }, "ChangeProcessingTuning": { "BatchApplyPreserveTransaction": true, "BatchApplyTimeoutMin": 1, "BatchApplyTimeoutMax": 30, "BatchApplyMemoryLimit": 500, "BatchSplitSize": 0, "MinTransactionSize": 1000, "CommitTimeout": 1, "MemoryLimitTotal": 1024, "MemoryKeepTime": 60, "StatementCacheSize": 50 }, "PostProcessingRules": null, "CharacterSetSettings": null, "LoopbackPreventionSettings": null, "BeforeImageSettings": null }'
+      TableMappings: '{"rules":[{"rule-type":"selection","rule-id":"1","rule-name":"1","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_DELETED_OLI_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"2","rule-name":"2","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_ATTENDANCE_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"transformation","rule-id":"3","rule-name":"3","rule-target":"column","object-locator":{"schema-name":"%","table-name":"%","column-name":"%"},"rule-action":"convert-lowercase","value":null,"old-value":null},{"rule-type":"selection","rule-id":"4","rule-name":"4","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_MKTG_ACT_EMAILSEND_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"transformation","rule-id":"5","rule-name":"5","rule-target":"table","object-locator":{"schema-name":"%","table-name":"%"},"rule-action":"convert-lowercase","value":null,"old-value":null},{"rule-type":"transformation","rule-id":"6","rule-name":"6","rule-target":"schema","object-locator":{"schema-name":"%"},"rule-action":"convert-lowercase","value":null,"old-value":null},{"rule-type":"selection","rule-id":"7","rule-name":"7","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_IPWARMING_BOUNCEBACK_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"8","rule-name":"8","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_ADGROUPDUMP_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"9","rule-name":"9","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_SYN_BUDGET_TEST_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"10","rule-name":"10","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_SYN_SALES_HIST_TEST_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"11","rule-name":"11","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_07042017_SUB_MEMBER_CON_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"12","rule-name":"12","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_07042017_SUB_MEMBER_PER_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"13","rule-name":"13","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_07042017_SUB_MEMBER_LEAD_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"14","rule-name":"14","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_07042017_SUBCSRIPTION_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"15","rule-name":"15","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_07042017_PRI_COMM_CHANN_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"16","rule-name":"16","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_PROFILE_RESPONSE_REG_PS"},"rule-action":"include","filters":[]},{"rule-type":"selection","rule-id":"17","rule-name":"17","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_QUOTE%"},"rule-action":"include","filters":[]},{"rule-type":"selection","rule-id":"18","rule-name":"18","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_REGISTRATION%PS"},"rule-action":"include","filters":[]},{"rule-type":"selection","rule-id":"19","rule-name":"19","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_SALES%"},"rule-action":"include","filters":[]},{"rule-type":"selection","rule-id":"20","rule-name":"20","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_SALES_PROD_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"21","rule-name":"21","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_SALES_ORDER_PS"},"rule-action":"exclude","filters":[]},{"rule-type":"selection","rule-id":"22","rule-name":"22","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_SESSION%"},"rule-action":"include","filters":[]},{"rule-type":"selection","rule-id":"23","rule-name":"23","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_SUBCSRIPTION%PS"},"rule-action":"include","filters":[]},{"rule-type":"selection","rule-id":"24","rule-name":"24","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_SYMPOSIUM%"},"rule-action":"include","filters":[]},{"rule-type":"selection","rule-id":"25","rule-name":"25","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_SYN%_PS"},"rule-action":"include","filters":[]},{"rule-type":"selection","rule-id":"26","rule-name":"26","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_TAXANOMY%"},"rule-action":"include","filters":[]},{"rule-type":"selection","rule-id":"27","rule-name":"27","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_UNSUBSCRIBE_REQUEST_PS"},"rule-action":"include","filters":[]},{"rule-type":"selection","rule-id":"28","rule-name":"28","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_VENUE_PS"},"rule-action":"include","filters":[]},{"rule-type":"selection","rule-id":"29","rule-name":"29","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_VISITOR_PS"},"rule-action":"include","filters":[]},{"rule-type":"selection","rule-id":"30","rule-name":"30","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_WORK_%_PS"},"rule-action":"include","filters":[]},{"rule-type":"selection","rule-id":"31","rule-name":"31","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_ACTIVITY%_PS"},"rule-action":"include","filters":[]},{"rule-type":"selection","rule-id":"32","rule-name":"32","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_AD_MEM_PS"},"rule-action":"include","filters":[]},{"rule-type":"selection","rule-id":"33","rule-name":"33","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_ADUSER_PS"},"rule-action":"include","filters":[]},{"rule-type":"selection","rule-id":"34","rule-name":"34","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_ARCHE_TYPE_PS"},"rule-action":"include","filters":[]},{"rule-type":"selection","rule-id":"35","rule-name":"35","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_ASSET_PS"},"rule-action":"include","filters":[]},{"rule-type":"selection","rule-id":"36","rule-name":"36","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_ATSHOWACTIVITY_PS"},"rule-action":"include","filters":[]},{"rule-type":"selection","rule-id":"37","rule-name":"37","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_BUSINESS_MODEL_PS"},"rule-action":"include","filters":[]},{"rule-type":"selection","rule-id":"38","rule-name":"38","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_CUSTOMER_PERSON_PS_TL"},"rule-action":"include","filters":[]},{"rule-type":"selection","rule-id":"39","rule-name":"39","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_DOCUSIGN_PS"},"rule-action":"include","filters":[]}]}'
+
+  DMSReplicationCDCObiee:
+    Condition: CreateTaskResources
+    DependsOn:
+      - DMSReplicationOnlyCDCDWOBIEEInstance
+      - DmsEndpointSource2
+      - DmsEndpointLandingZoneTarget
+    Type: AWS::DMS::ReplicationTask
+    Properties:
+      MigrationType: 'full-load'
+      ReplicationInstanceArn: !Ref DMSReplicationOnlyCDCDWOBIEEInstance
+      ReplicationTaskIdentifier: !Sub 'rx-gbs-datalake-${BillingEnvironmentName}-oracle-obiee-s3-task'
+      SourceEndpointArn: !Ref DmsEndpointSource2
+      TargetEndpointArn: !Ref DmsEndpointLandingZoneTarget
+      ReplicationTaskSettings: '{ "TargetMetadata": { "TargetSchema": "", "SupportLobs": true, "FullLobMode": false, "LobChunkSize": 0, "LimitedSizeLobMode": true, "LobMaxSize": 32, "InlineLobMaxSize": 0, "LoadMaxFileSize": 0, "ParallelLoadThreads": 0, "ParallelLoadBufferSize": 0, "BatchApplyEnabled": false, "TaskRecoveryTableEnabled": false, "ParallelLoadQueuesPerThread": 0, "ParallelApplyThreads": 0, "ParallelApplyBufferSize": 0, "ParallelApplyQueuesPerThread": 0 }, "FullLoadSettings": { "TargetTablePrepMode": "TRUNCATE_BEFORE_LOAD", "CreatePkAfterFullLoad": false, "StopTaskCachedChangesApplied": false, "StopTaskCachedChangesNotApplied": false, "MaxFullLoadSubTasks": 8, "TransactionConsistencyTimeout": 600, "CommitRate": 10000 }, "Logging": { "EnableLogging": true, "LogComponents": [ { "Id": "TRANSFORMATION", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "SOURCE_UNLOAD", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "IO", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "TARGET_LOAD", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "PERFORMANCE", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "SOURCE_CAPTURE", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "SORTER", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "REST_SERVER", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "VALIDATOR_EXT", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "TARGET_APPLY", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "TASK_MANAGER", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "TABLES_MANAGER", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "METADATA_MANAGER", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "FILE_FACTORY", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "COMMON", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "ADDONS", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "DATA_STRUCTURE", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "COMMUNICATION", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "FILE_TRANSFER", "Severity": "LOGGER_SEVERITY_DEFAULT" } ], "CloudWatchLogGroup":null, "CloudWatchLogStream": null}, "ControlTablesSettings": { "historyTimeslotInMinutes": 5, "ControlSchema": "config", "HistoryTimeslotInMinutes": 5, "HistoryTableEnabled": false, "SuspendedTablesTableEnabled": false, "StatusTableEnabled": false }, "StreamBufferSettings": { "StreamBufferCount": 3, "StreamBufferSizeInMB": 8, "CtrlStreamBufferSizeInMB": 5 }, "ChangeProcessingDdlHandlingPolicy": { "HandleSourceTableDropped": true, "HandleSourceTableTruncated": true, "HandleSourceTableAltered": true }, "ErrorBehavior": { "DataErrorPolicy": "LOG_ERROR", "DataTruncationErrorPolicy": "LOG_ERROR", "DataErrorEscalationPolicy": "SUSPEND_TABLE", "DataErrorEscalationCount": 0, "TableErrorPolicy": "SUSPEND_TABLE", "TableErrorEscalationPolicy": "STOP_TASK", "TableErrorEscalationCount": 0, "RecoverableErrorCount": -1, "RecoverableErrorInterval": 5, "RecoverableErrorThrottling": true, "RecoverableErrorThrottlingMax": 1800, "RecoverableErrorStopRetryAfterThrottlingMax": true, "ApplyErrorDeletePolicy": "IGNORE_RECORD", "ApplyErrorInsertPolicy": "LOG_ERROR", "ApplyErrorUpdatePolicy": "LOG_ERROR", "ApplyErrorEscalationPolicy": "LOG_ERROR", "ApplyErrorEscalationCount": 0, "ApplyErrorFailOnTruncationDdl": false, "FullLoadIgnoreConflicts": true, "FailOnTransactionConsistencyBreached": false, "FailOnNoTablesCaptured": true }, "ChangeProcessingTuning": { "BatchApplyPreserveTransaction": true, "BatchApplyTimeoutMin": 1, "BatchApplyTimeoutMax": 30, "BatchApplyMemoryLimit": 500, "BatchSplitSize": 0, "MinTransactionSize": 1000, "CommitTimeout": 1, "MemoryLimitTotal": 1024, "MemoryKeepTime": 60, "StatementCacheSize": 50 }, "PostProcessingRules": null, "CharacterSetSettings": null, "LoopbackPreventionSettings": null, "BeforeImageSettings": null }'
+      TableMappings: '{"rules":[{"rule-type":"transformation","rule-id":"1","rule-name":"1","rule-target":"column","object-locator":{"schema-name":"%","table-name":"%","column-name":"%"},"rule-action":"convert-lowercase","value":null,"old-value":null},{"rule-type":"transformation","rule-id":"2","rule-name":"2","rule-target":"table","object-locator":{"schema-name":"%","table-name":"%"},"rule-action":"convert-lowercase","value":null,"old-value":null},{"rule-type":"transformation","rule-id":"3","rule-name":"3","rule-target":"schema","object-locator":{"schema-name":"%"},"rule-action":"convert-lowercase","value":null,"old-value":null},{"rule-type":"selection","rule-id":"4","rule-name":"4","object-locator":{"schema-name":"PRXBI_OBIEE","table-name":"SQ_XREF_CON"},"rule-action":"include","filters":[]}]}'
+
+  DMSReplicationEmailSend:
+    Condition: CreateTaskResources
+    DependsOn:
+      - DMSReplicationOnlyCDCEmailSendInstance
+      - DmsEndpointSource2
+      - DmsEndpointRawZoneTarget
+    Type: AWS::DMS::ReplicationTask
+    Properties:
+      MigrationType: 'full-load'
+      ReplicationInstanceArn: !Ref DMSReplicationOnlyCDCEmailSendInstance
+      ReplicationTaskIdentifier: !Sub 'rx-gbs-datalake-${BillingEnvironmentName}-oracle-emailsend-s3-task'
+      SourceEndpointArn: !Ref DmsEndpointSource2
+      TargetEndpointArn: !Ref DmsEndpointRawZoneTarget
+      ReplicationTaskSettings: '{ "TargetMetadata": { "TargetSchema": "", "SupportLobs": true, "FullLobMode": false, "LobChunkSize": 0, "LimitedSizeLobMode": true, "LobMaxSize": 32, "InlineLobMaxSize": 0, "LoadMaxFileSize": 0, "ParallelLoadThreads": 0, "ParallelLoadBufferSize": 0, "BatchApplyEnabled": false, "TaskRecoveryTableEnabled": false, "ParallelLoadQueuesPerThread": 0, "ParallelApplyThreads": 0, "ParallelApplyBufferSize": 0, "ParallelApplyQueuesPerThread": 0 }, "FullLoadSettings": { "TargetTablePrepMode": "TRUNCATE_BEFORE_LOAD", "CreatePkAfterFullLoad": false, "StopTaskCachedChangesApplied": false, "StopTaskCachedChangesNotApplied": false, "MaxFullLoadSubTasks": 8, "TransactionConsistencyTimeout": 600, "CommitRate": 10000 }, "Logging": { "EnableLogging": true, "LogComponents": [ { "Id": "TRANSFORMATION", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "SOURCE_UNLOAD", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "IO", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "TARGET_LOAD", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "PERFORMANCE", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "SOURCE_CAPTURE", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "SORTER", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "REST_SERVER", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "VALIDATOR_EXT", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "TARGET_APPLY", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "TASK_MANAGER", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "TABLES_MANAGER", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "METADATA_MANAGER", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "FILE_FACTORY", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "COMMON", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "ADDONS", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "DATA_STRUCTURE", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "COMMUNICATION", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "FILE_TRANSFER", "Severity": "LOGGER_SEVERITY_DEFAULT" } ], "CloudWatchLogGroup":null, "CloudWatchLogStream": null }, "ControlTablesSettings": { "historyTimeslotInMinutes": 5, "ControlSchema": "config", "HistoryTimeslotInMinutes": 5, "HistoryTableEnabled": false, "SuspendedTablesTableEnabled": false, "StatusTableEnabled": false }, "StreamBufferSettings": { "StreamBufferCount": 3, "StreamBufferSizeInMB": 8, "CtrlStreamBufferSizeInMB": 5 }, "ChangeProcessingDdlHandlingPolicy": { "HandleSourceTableDropped": true, "HandleSourceTableTruncated": true, "HandleSourceTableAltered": true }, "ErrorBehavior": { "DataErrorPolicy": "LOG_ERROR", "DataTruncationErrorPolicy": "LOG_ERROR", "DataErrorEscalationPolicy": "SUSPEND_TABLE", "DataErrorEscalationCount": 0, "TableErrorPolicy": "SUSPEND_TABLE", "TableErrorEscalationPolicy": "STOP_TASK", "TableErrorEscalationCount": 0, "RecoverableErrorCount": -1, "RecoverableErrorInterval": 5, "RecoverableErrorThrottling": true, "RecoverableErrorThrottlingMax": 1800, "RecoverableErrorStopRetryAfterThrottlingMax": false, "ApplyErrorDeletePolicy": "IGNORE_RECORD", "ApplyErrorInsertPolicy": "LOG_ERROR", "ApplyErrorUpdatePolicy": "LOG_ERROR", "ApplyErrorEscalationPolicy": "LOG_ERROR", "ApplyErrorEscalationCount": 0, "ApplyErrorFailOnTruncationDdl": false, "FullLoadIgnoreConflicts": true, "FailOnTransactionConsistencyBreached": false, "FailOnNoTablesCaptured": true }, "ChangeProcessingTuning": { "BatchApplyPreserveTransaction": true, "BatchApplyTimeoutMin": 1, "BatchApplyTimeoutMax": 30, "BatchApplyMemoryLimit": 500, "BatchSplitSize": 0, "MinTransactionSize": 1000, "CommitTimeout": 1, "MemoryLimitTotal": 1024, "MemoryKeepTime": 60, "StatementCacheSize": 50 }, "PostProcessingRules": null, "CharacterSetSettings": null, "LoopbackPreventionSettings": null, "BeforeImageSettings": null }'
+      TableMappings: '{"rules":[{"rule-type":"transformation","rule-id":"1","rule-name":"1","rule-target":"column","object-locator":{"schema-name":"%","table-name":"%","column-name":"%"},"rule-action":"convert-lowercase","value":null,"old-value":null},{"rule-type":"transformation","rule-id":"2","rule-name":"2","rule-target":"table","object-locator":{"schema-name":"%","table-name":"%"},"rule-action":"convert-lowercase","value":null,"old-value":null},{"rule-type":"transformation","rule-id":"3","rule-name":"3","rule-target":"schema","object-locator":{"schema-name":"%"},"rule-action":"convert-lowercase","value":null,"old-value":null},{"rule-type":"selection","rule-id":"4","rule-name":"4","object-locator":{"schema-name":"PRXBI_PS","table-name":"WC_MKTG_ACT_EMAILSEND_PS"},"rule-action":"include","filters":[]}]}'
+
+  DMSReplicationCDCDW:
+    Condition: CreateTaskResources
+    DependsOn:
+      - DMSReplicationOnlyCDCDWOBIEEInstance
+      - DmsEndpointSource2
+      - DmsEndpointLandingZoneTarget
+    Type: AWS::DMS::ReplicationTask
+    Properties:
+      MigrationType: 'full-load'
+      ReplicationInstanceArn: !Ref DMSReplicationOnlyCDCDWOBIEEInstance
+      ReplicationTaskIdentifier: !Sub 'rx-gbs-datalake-${BillingEnvironmentName}-oracle-edw-dw-s3-task'
+      SourceEndpointArn: !Ref DmsEndpointSource2
+      TargetEndpointArn: !Ref DmsEndpointLandingZoneTarget
+      ReplicationTaskSettings: '{ "TargetMetadata": { "TargetSchema": "", "SupportLobs": true, "FullLobMode": false, "LobChunkSize": 0, "LimitedSizeLobMode": true, "LobMaxSize": 32, "InlineLobMaxSize": 0, "LoadMaxFileSize": 0, "ParallelLoadThreads": 0, "ParallelLoadBufferSize": 0, "BatchApplyEnabled": false, "TaskRecoveryTableEnabled": false, "ParallelLoadQueuesPerThread": 0, "ParallelApplyThreads": 0, "ParallelApplyBufferSize": 0, "ParallelApplyQueuesPerThread": 0 }, "FullLoadSettings": { "TargetTablePrepMode": "TRUNCATE_BEFORE_LOAD", "CreatePkAfterFullLoad": false, "StopTaskCachedChangesApplied": false, "StopTaskCachedChangesNotApplied": false, "MaxFullLoadSubTasks": 8, "TransactionConsistencyTimeout": 600, "CommitRate": 10000 }, "Logging": { "EnableLogging": true, "LogComponents": [ { "Id": "TRANSFORMATION", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "SOURCE_UNLOAD", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "IO", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "TARGET_LOAD", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "PERFORMANCE", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "SOURCE_CAPTURE", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "SORTER", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "REST_SERVER", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "VALIDATOR_EXT", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "TARGET_APPLY", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "TASK_MANAGER", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "TABLES_MANAGER", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "METADATA_MANAGER", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "FILE_FACTORY", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "COMMON", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "ADDONS", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "DATA_STRUCTURE", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "COMMUNICATION", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "FILE_TRANSFER", "Severity": "LOGGER_SEVERITY_DEFAULT" } ], "CloudWatchLogGroup":null, "CloudWatchLogStream": null }, "ControlTablesSettings": { "historyTimeslotInMinutes": 5, "ControlSchema": "config", "HistoryTimeslotInMinutes": 5, "HistoryTableEnabled": false, "SuspendedTablesTableEnabled": false, "StatusTableEnabled": false }, "StreamBufferSettings": { "StreamBufferCount": 3, "StreamBufferSizeInMB": 8, "CtrlStreamBufferSizeInMB": 5 }, "ChangeProcessingDdlHandlingPolicy": { "HandleSourceTableDropped": true, "HandleSourceTableTruncated": true, "HandleSourceTableAltered": true }, "ErrorBehavior": { "DataErrorPolicy": "LOG_ERROR", "DataTruncationErrorPolicy": "LOG_ERROR", "DataErrorEscalationPolicy": "SUSPEND_TABLE", "DataErrorEscalationCount": 0, "TableErrorPolicy": "SUSPEND_TABLE", "TableErrorEscalationPolicy": "STOP_TASK", "TableErrorEscalationCount": 0, "RecoverableErrorCount": -1, "RecoverableErrorInterval": 5, "RecoverableErrorThrottling": true, "RecoverableErrorThrottlingMax": 1800, "RecoverableErrorStopRetryAfterThrottlingMax": true, "ApplyErrorDeletePolicy": "IGNORE_RECORD", "ApplyErrorInsertPolicy": "LOG_ERROR", "ApplyErrorUpdatePolicy": "LOG_ERROR", "ApplyErrorEscalationPolicy": "LOG_ERROR", "ApplyErrorEscalationCount": 0, "ApplyErrorFailOnTruncationDdl": false, "FullLoadIgnoreConflicts": true, "FailOnTransactionConsistencyBreached": false, "FailOnNoTablesCaptured": true }, "ChangeProcessingTuning": { "BatchApplyPreserveTransaction": true, "BatchApplyTimeoutMin": 1, "BatchApplyTimeoutMax": 30, "BatchApplyMemoryLimit": 500, "BatchSplitSize": 0, "MinTransactionSize": 1000, "CommitTimeout": 1, "MemoryLimitTotal": 1024, "MemoryKeepTime": 60, "StatementCacheSize": 50 }, "PostProcessingRules": null, "CharacterSetSettings": null, "LoopbackPreventionSettings": null, "BeforeImageSettings": null }'
+      TableMappings: '{"rules":[{"rule-type":"selection","rule-id":"1","rule-name":"1","object-locator":{"schema-name":"PRXBI_DW","table-name":"W_UOM_CONVERSION_G"},"rule-action":"include","filters":[]},{"rule-type":"selection","rule-id":"2","rule-name":"2","object-locator":{"schema-name":"PRXBI_DW","table-name":"WC_EXCHG_RATE_LKP_G"},"rule-action":"include","filters":[]},{"rule-type":"selection","rule-id":"3","rule-name":"3","object-locator":{"schema-name":"PRXBI_DW","table-name":"W_EMPLOYEE_D"},"rule-action":"include","filters":[]},{"rule-type":"selection","rule-id":"4","rule-name":"4","object-locator":{"schema-name":"PRXBI_DW","table-name":"W_XACT_TYPE_D"},"rule-action":"include","filters":[]},{"rule-type":"selection","rule-id":"5","rule-name":"5","object-locator":{"schema-name":"PRXBI_DW","table-name":"WC_USER_D"},"rule-action":"include","filters":[]},{"rule-type":"transformation","rule-id":"6","rule-name":"6","rule-target":"column","object-locator":{"schema-name":"%","table-name":"%","column-name":"%"},"rule-action":"convert-lowercase","value":null,"old-value":null},{"rule-type":"transformation","rule-id":"7","rule-name":"7","rule-target":"table","object-locator":{"schema-name":"%","table-name":"%"},"rule-action":"convert-lowercase","value":null,"old-value":null},{"rule-type":"transformation","rule-id":"8","rule-name":"8","rule-target":"schema","object-locator":{"schema-name":"%"},"rule-action":"convert-lowercase","value":null,"old-value":null},{"rule-type":"selection","rule-id":"9","rule-name":"9","object-locator":{"schema-name":"PRXBI_DW","table-name":"WC_PRODUCT_GCOA_MAPPING"},"rule-action":"include","filters":[]},{"rule-type":"selection","rule-id":"10","rule-name":"10","object-locator":{"schema-name":"PRXBI_DW","table-name":"WC_SALES_ORDER_TEMP_DL"},"rule-action":"include","filters":[]},{"rule-type":"selection","rule-id":"11","rule-name":"11","object-locator":{"schema-name":"PRXBI_DW","table-name":"WC_ISG_SALES_TGT_REC_TYPE_D"},"rule-action":"include","filters":[]},{"rule-type":"selection","rule-id":"12","rule-name":"12","object-locator":{"schema-name":"PRXBI_DW","table-name":"WC_INVOICE_PAID_DL"},"rule-action":"include","filters":[]}]}'
+
+  DMSReplicationCDCS3:
+    Condition: CreateTaskResources
+    DependsOn:
+      - DMSReplicationOnlyCDCDWOBIEEInstance
+      - DmsEndpointSource3
+      - DmsEndpointLandingZoneTarget
+    Type: AWS::DMS::ReplicationTask
+    Properties:
+      MigrationType: 'full-load'
+      ReplicationInstanceArn: !Ref DMSReplicationOnlyCDCDWOBIEEInstance
+      ReplicationTaskIdentifier: !Sub 'rx-gbs-datalake-${BillingEnvironmentName}-oracle-s3-task'
+      SourceEndpointArn: !Ref DmsEndpointSource3
+      TargetEndpointArn: !Ref DmsEndpointLandingZoneTarget
+      ReplicationTaskSettings: '{ "TargetMetadata": { "TargetSchema": "", "SupportLobs": true, "FullLobMode": false, "LobChunkSize": 0, "LimitedSizeLobMode": true, "LobMaxSize": 32, "InlineLobMaxSize": 0, "LoadMaxFileSize": 0, "ParallelLoadThreads": 0, "ParallelLoadBufferSize": 0, "BatchApplyEnabled": false, "TaskRecoveryTableEnabled": false, "ParallelLoadQueuesPerThread": 0, "ParallelApplyThreads": 0, "ParallelApplyBufferSize": 0, "ParallelApplyQueuesPerThread": 0 }, "FullLoadSettings": { "TargetTablePrepMode": "TRUNCATE_BEFORE_LOAD", "CreatePkAfterFullLoad": false, "StopTaskCachedChangesApplied": false, "StopTaskCachedChangesNotApplied": false, "MaxFullLoadSubTasks": 8, "TransactionConsistencyTimeout": 600, "CommitRate": 10000 }, "Logging": { "EnableLogging": true, "LogComponents": [ { "Id": "TRANSFORMATION", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "SOURCE_UNLOAD", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "IO", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "TARGET_LOAD", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "PERFORMANCE", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "SOURCE_CAPTURE", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "SORTER", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "REST_SERVER", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "VALIDATOR_EXT", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "TARGET_APPLY", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "TASK_MANAGER", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "TABLES_MANAGER", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "METADATA_MANAGER", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "FILE_FACTORY", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "COMMON", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "ADDONS", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "DATA_STRUCTURE", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "COMMUNICATION", "Severity": "LOGGER_SEVERITY_DEFAULT" }, { "Id": "FILE_TRANSFER", "Severity": "LOGGER_SEVERITY_DEFAULT" } ], "CloudWatchLogGroup":null, "CloudWatchLogStream": null }, "ControlTablesSettings": { "historyTimeslotInMinutes": 5, "ControlSchema": "config", "HistoryTimeslotInMinutes": 5, "HistoryTableEnabled": false, "SuspendedTablesTableEnabled": false, "StatusTableEnabled": false }, "StreamBufferSettings": { "StreamBufferCount": 3, "StreamBufferSizeInMB": 8, "CtrlStreamBufferSizeInMB": 5 }, "ChangeProcessingDdlHandlingPolicy": { "HandleSourceTableDropped": true, "HandleSourceTableTruncated": true, "HandleSourceTableAltered": true }, "ErrorBehavior": { "DataErrorPolicy": "LOG_ERROR", "DataTruncationErrorPolicy": "LOG_ERROR", "DataErrorEscalationPolicy": "SUSPEND_TABLE", "DataErrorEscalationCount": 0, "TableErrorPolicy": "SUSPEND_TABLE", "TableErrorEscalationPolicy": "STOP_TASK", "TableErrorEscalationCount": 0, "RecoverableErrorCount": -1, "RecoverableErrorInterval": 5, "RecoverableErrorThrottling": true, "RecoverableErrorThrottlingMax": 1800, "RecoverableErrorStopRetryAfterThrottlingMax": true, "ApplyErrorDeletePolicy": "IGNORE_RECORD", "ApplyErrorInsertPolicy": "LOG_ERROR", "ApplyErrorUpdatePolicy": "LOG_ERROR", "ApplyErrorEscalationPolicy": "LOG_ERROR", "ApplyErrorEscalationCount": 0, "ApplyErrorFailOnTruncationDdl": false, "FullLoadIgnoreConflicts": true, "FailOnTransactionConsistencyBreached": false, "FailOnNoTablesCaptured": true }, "ChangeProcessingTuning": { "BatchApplyPreserveTransaction": true, "BatchApplyTimeoutMin": 1, "BatchApplyTimeoutMax": 30, "BatchApplyMemoryLimit": 500, "BatchSplitSize": 0, "MinTransactionSize": 1000, "CommitTimeout": 1, "MemoryLimitTotal": 1024, "MemoryKeepTime": 60, "StatementCacheSize": 50 }, "PostProcessingRules": null, "CharacterSetSettings": null, "LoopbackPreventionSettings": null, "BeforeImageSettings": null }'
+      TableMappings: '{"rules":[{"rule-type":"transformation","rule-id":"1","rule-name":"1","rule-target":"column","object-locator":{"schema-name":"%","table-name":"%","column-name":"%"},"rule-action":"convert-lowercase","value":null,"old-value":null},{"rule-type":"transformation","rule-id":"2","rule-name":"2","rule-target":"table","object-locator":{"schema-name":"%","table-name":"%"},"rule-action":"convert-lowercase","value":null,"old-value":null},{"rule-type":"transformation","rule-id":"3","rule-name":"3","rule-target":"schema","object-locator":{"schema-name":"%"},"rule-action":"convert-lowercase","value":null,"old-value":null},{"rule-type":"selection","rule-id":"4","rule-name":"4","object-locator":{"schema-name":"XXRX_URXEAS1_OIM","table-name":"RXOBIEE"},"rule-action":"include","filters":[]}]}'

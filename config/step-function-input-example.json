@@ -1,0 +1,46 @@
+{
+  "env_name": "preprod",
+  "env_id": "376980907058",
+  "startFrom": "DMS",
+  "filePathRaw": "s3://rx-gbs-datalake-processingzone-preprod/emr-jobs/jobs/convert_to_parquet_main.py",
+  "filePathRefined": "s3://rx-gbs-datalake-processingzone-preprod/emr-jobs/jobs/move_from_s3_main.py",
+  "modulesPath": "s3://rx-gbs-datalake-processingzone-preprod/emr-jobs/jobs/etl_job_modules.zip",
+  "configDB": "globaldb_etl_config_preprod",
+  "configTable": "etl_job_config",
+  "logsTable": "etl_execution_log_history",
+  "logHistoryS3Path": "s3://rx-gbs-datalake-logs-preprod/etl_execution_log_history/",
+  "non_anonymized_bucket": "s3://rx-gbs-datalake-non-anonymized-data-preprod/",
+  "non_anonymized_db": "globaldb_non_anonymized_preprod",
+  "complete_sns_arn": "arn:aws:sns:eu-west-1:376980907058:rx-datalake-efm-load-complete-notification",
+  "sns_arn": "arn:aws:sns:eu-west-1:376980907058:rx-datalake-sns-notification",
+  "groups": ["1" , "2", "3"],
+  "dms_tasks": [
+    {
+      "replication_instance_arn": "arn:aws:dms:eu-west-1:376980907058:rep:R5KSBKY4FTEN3ILLWOGX2JYTOOEI4JO5UGDTILY",
+      "upgrade_status": true,
+      "upgrade_instance_class": "dms.c5.4xlarge",
+      "downgrade_instance_class": "dms.t3.micro",
+      "tasks": [
+        "arn:aws:dms:eu-west-1:376980907058:task:SNYZ5UKQTGQZYKR6MQRWLB7XBPGQTF4VE4XEU4Q",
+        "arn:aws:dms:eu-west-1:376980907058:task:4OYFJ6QKS5ILQB66JS5I3H2YJA6Y7BQKHQPC5UA",
+        "arn:aws:dms:eu-west-1:376980907058:task:X432WQJGAXKNQB7TOTPL3XLRWRJ2KG4H5E47KXQ"
+      ]
+    },
+    {
+      "replication_instance_arn": "arn:aws:dms:eu-west-1:376980907058:rep:W2BW57GRRI2UGFML75362FGCYPHNHBA7QT5GRAA",
+      "upgrade_status": true,
+      "upgrade_instance_class": "dms.c5.4xlarge",
+      "downgrade_instance_class": "dms.t3.micro",
+      "tasks": [
+        "arn:aws:dms:eu-west-1:376980907058:task:O6FIAM6ZSVRWZORUOUCQTVDXIE6K2CFRFUAF75A",
+        "arn:aws:dms:eu-west-1:376980907058:task:FIYVNFLB4TLE3IVE5KJ2BBWEA6EPOJ3NXFA2F4Y",
+        "arn:aws:dms:eu-west-1:376980907058:task:XKHXSZGLT3B65IQ4G3DDLHW5P6EODZDSONXGULA",
+        "arn:aws:dms:eu-west-1:376980907058:task:K6GZSOVUCI3TP75O7YUI6AFX2SIDWPXTZAEBUVQ",
+        "arn:aws:dms:eu-west-1:376980907058:task:HMVK7TQAMUZVMW3ENZEMPNGA7WTXVW3OOTV24WY",
+        "arn:aws:dms:eu-west-1:376980907058:task:HUDSYO3Z4WH6EDQT7WWXPT2MP7W2DSB7TCRPBWQ",
+        "arn:aws:dms:eu-west-1:376980907058:task:7G5NPYQSOKWGTBYXADORDU2KFPS2QU2IMUMORXI",
+        "arn:aws:dms:eu-west-1:376980907058:task:FBIJGMVYJQL75XWMEDX4WFK2I7H23X5I32QHNLA"
+      ]
+    }
+  ]
+}

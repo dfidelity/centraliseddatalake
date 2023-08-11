@@ -1,0 +1,1511 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Template for security groups deployment",
+  "Parameters": {
+    "BillingEnvironmentName": {
+      "Description": "The target environment in which the stack is being created",
+      "Type": "String"
+    },
+    "PowerBIRDPSource": {
+      "Description": "PowerBI RDP IP range",
+      "Default": "10.137.79.68/32",
+      "Type": "String"
+    },
+    "EMRMasterSSHSourceIP": {
+      "Description": "For rx-gbs-datalake-jumpbox jumpbox",
+      "Default": "sg-0063ebbc69891e3aa",
+      "Type": "String"
+    },
+    "JumpBoxSG": {
+      "Description": "jumpBox Security Group ( SG )",
+      "Default": "sg-0063ebbc69891e3aa",
+      "Type": "String"
+    }
+  },
+  "Mappings": {
+    "233855833439": {
+      "VpcIds": {
+        "defaultVPCId": "vpc-0f9b604c76bfc0894"
+      },
+      "Tags": {
+        "FinanceActivityId": "8000",
+        "FinanceEntityId": "0092",
+        "FinanceManagementCentreId": "99440",
+        "JiraProjectCode": "RDL",
+        "PmProgramme": "platform",
+        "PmProjectCode": "n/a",
+        "BillingEnvironmentName": "dev"
+      }
+    }
+  },
+  "Conditions": {
+    "IsDev": {
+      "Fn::And": [
+        {
+          "Fn::Equals": [
+            {
+              "Ref": "AWS::AccountId"
+            },
+            "233855833439"
+          ]
+        },
+        {
+          "Fn::Equals": [
+            {
+              "Ref": "BillingEnvironmentName"
+            },
+            "dev"
+          ]
+        }
+      ]
+    }
+  },
+  "Resources": {
+    "DMSSG": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "VpcId": {
+          "Fn::FindInMap": [
+            {
+              "Ref": "AWS::AccountId"
+            },
+            "VpcIds",
+            "defaultVPCId"
+          ]
+        },
+        "GroupDescription": "Connectivity established for services using security group",
+        "GroupName": "rx-gbs-datalake-dms-sg",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "rx-gbs-datalake-dms-sg"
+          },
+          {
+            "Key": "rx:billing:finance-activity-id",
+            "Value": {
+              "Fn::FindInMap": [
+                {
+                  "Ref": "AWS::AccountId"
+                },
+                "Tags",
+                "FinanceActivityId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:finance-entity-id",
+            "Value": {
+              "Fn::FindInMap": [
+                {
+                  "Ref": "AWS::AccountId"
+                },
+                "Tags",
+                "FinanceEntityId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:finance-management-centre-id",
+            "Value": {
+              "Fn::FindInMap": [
+                {
+                  "Ref": "AWS::AccountId"
+                },
+                "Tags",
+                "FinanceManagementCentreId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:jira-project-code",
+            "Value": {
+              "Fn::FindInMap": [
+                {
+                  "Ref": "AWS::AccountId"
+                },
+                "Tags",
+                "JiraProjectCode"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:pm-programme",
+            "Value": {
+              "Fn::FindInMap": [
+                {
+                  "Ref": "AWS::AccountId"
+                },
+                "Tags",
+                "PmProgramme"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:pm-project-code",
+            "Value": {
+              "Fn::FindInMap": [
+                {
+                  "Ref": "AWS::AccountId"
+                },
+                "Tags",
+                "PmProjectCode"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:environment-name",
+            "Value": {
+              "Fn::FindInMap": [
+                {
+                  "Ref": "AWS::AccountId"
+                },
+                "Tags",
+                "BillingEnvironmentName"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "PostgresRDSSG": {
+      "Condition": "IsDev",
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "VpcId": {
+          "Fn::FindInMap": [
+            {
+              "Ref": "AWS::AccountId"
+            },
+            "VpcIds",
+            "defaultVPCId"
+          ]
+        },
+        "GroupDescription": "Created by RDS management console",
+        "GroupName": "rx-gbs-datalake-postgres-rds-sg",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "rx-gbs-datalake-postgres-rds-sg"
+          },
+          {
+            "Key": "rx:billing:finance-activity-id",
+            "Value": {
+              "Fn::FindInMap": [
+                {
+                  "Ref": "AWS::AccountId"
+                },
+                "Tags",
+                "FinanceActivityId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:finance-entity-id",
+            "Value": {
+              "Fn::FindInMap": [
+                {
+                  "Ref": "AWS::AccountId"
+                },
+                "Tags",
+                "FinanceEntityId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:finance-management-centre-id",
+            "Value": {
+              "Fn::FindInMap": [
+                {
+                  "Ref": "AWS::AccountId"
+                },
+                "Tags",
+                "FinanceManagementCentreId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:jira-project-code",
+            "Value": {
+              "Fn::FindInMap": [
+                {
+                  "Ref": "AWS::AccountId"
+                },
+                "Tags",
+                "JiraProjectCode"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:pm-programme",
+            "Value": {
+              "Fn::FindInMap": [
+                {
+                  "Ref": "AWS::AccountId"
+                },
+                "Tags",
+                "PmProgramme"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:pm-project-code",
+            "Value": {
+              "Fn::FindInMap": [
+                {
+                  "Ref": "AWS::AccountId"
+                },
+                "Tags",
+                "PmProjectCode"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:environment-name",
+            "Value": {
+              "Fn::FindInMap": [
+                {
+                  "Ref": "AWS::AccountId"
+                },
+                "Tags",
+                "BillingEnvironmentName"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "EMRMasterSG": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "VpcId": {
+          "Fn::FindInMap": [
+            {
+              "Ref": "AWS::AccountId"
+            },
+            "VpcIds",
+            "defaultVPCId"
+          ]
+        },
+        "GroupDescription": "Master group for Elastic MapReduce",
+        "GroupName": "rx-gbs-datalake-emr-master-sg",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "rx-gbs-datalake-emr-master-sg"
+          },
+          {
+            "Key": "rx:billing:finance-activity-id",
+            "Value": {
+              "Fn::FindInMap": [
+                {
+                  "Ref": "AWS::AccountId"
+                },
+                "Tags",
+                "FinanceActivityId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:finance-entity-id",
+            "Value": {
+              "Fn::FindInMap": [
+                {
+                  "Ref": "AWS::AccountId"
+                },
+                "Tags",
+                "FinanceEntityId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:finance-management-centre-id",
+            "Value": {
+              "Fn::FindInMap": [
+                {
+                  "Ref": "AWS::AccountId"
+                },
+                "Tags",
+                "FinanceManagementCentreId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:jira-project-code",
+            "Value": {
+              "Fn::FindInMap": [
+                {
+                  "Ref": "AWS::AccountId"
+                },
+                "Tags",
+                "JiraProjectCode"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:pm-programme",
+            "Value": {
+              "Fn::FindInMap": [
+                {
+                  "Ref": "AWS::AccountId"
+                },
+                "Tags",
+                "PmProgramme"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:pm-project-code",
+            "Value": {
+              "Fn::FindInMap": [
+                {
+                  "Ref": "AWS::AccountId"
+                },
+                "Tags",
+                "PmProjectCode"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:environment-name",
+            "Value": {
+              "Fn::FindInMap": [
+                {
+                  "Ref": "AWS::AccountId"
+                },
+                "Tags",
+                "BillingEnvironmentName"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "EMRSlaveSG": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "VpcId": {
+          "Fn::FindInMap": [
+            {
+              "Ref": "AWS::AccountId"
+            },
+            "VpcIds",
+            "defaultVPCId"
+          ]
+        },
+        "GroupDescription": "Slave group for Elastic MapReduce",
+        "GroupName": "rx-gbs-datalake-emr-slave-sg",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "rx-gbs-datalake-emr-slave-sg"
+          },
+          {
+            "Key": "rx:billing:finance-activity-id",
+            "Value": {
+              "Fn::FindInMap": [
+                {
+                  "Ref": "AWS::AccountId"
+                },
+                "Tags",
+                "FinanceActivityId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:finance-entity-id",
+            "Value": {
+              "Fn::FindInMap": [
+                {
+                  "Ref": "AWS::AccountId"
+                },
+                "Tags",
+                "FinanceEntityId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:finance-management-centre-id",
+            "Value": {
+              "Fn::FindInMap": [
+                {
+                  "Ref": "AWS::AccountId"
+                },
+                "Tags",
+                "FinanceManagementCentreId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:jira-project-code",
+            "Value": {
+              "Fn::FindInMap": [
+                {
+                  "Ref": "AWS::AccountId"
+                },
+                "Tags",
+                "JiraProjectCode"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:pm-programme",
+            "Value": {
+              "Fn::FindInMap": [
+                {
+                  "Ref": "AWS::AccountId"
+                },
+                "Tags",
+                "PmProgramme"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:pm-project-code",
+            "Value": {
+              "Fn::FindInMap": [
+                {
+                  "Ref": "AWS::AccountId"
+                },
+                "Tags",
+                "PmProjectCode"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:environment-name",
+            "Value": {
+              "Fn::FindInMap": [
+                {
+                  "Ref": "AWS::AccountId"
+                },
+                "Tags",
+                "BillingEnvironmentName"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "EMRServiceAccessSG": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "VpcId": {
+          "Fn::FindInMap": [
+            {
+              "Ref": "AWS::AccountId"
+            },
+            "VpcIds",
+            "defaultVPCId"
+          ]
+        },
+        "GroupDescription": "Slave group for Elastic MapReduce",
+        "GroupName": "rx-gbs-datalake-emr-service-access-sg",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "rx-gbs-datalake-emr-service-access-sg"
+          },
+          {
+            "Key": "rx:billing:finance-activity-id",
+            "Value": {
+              "Fn::FindInMap": [
+                {
+                  "Ref": "AWS::AccountId"
+                },
+                "Tags",
+                "FinanceActivityId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:finance-entity-id",
+            "Value": {
+              "Fn::FindInMap": [
+                {
+                  "Ref": "AWS::AccountId"
+                },
+                "Tags",
+                "FinanceEntityId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:finance-management-centre-id",
+            "Value": {
+              "Fn::FindInMap": [
+                {
+                  "Ref": "AWS::AccountId"
+                },
+                "Tags",
+                "FinanceManagementCentreId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:jira-project-code",
+            "Value": {
+              "Fn::FindInMap": [
+                {
+                  "Ref": "AWS::AccountId"
+                },
+                "Tags",
+                "JiraProjectCode"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:pm-programme",
+            "Value": {
+              "Fn::FindInMap": [
+                {
+                  "Ref": "AWS::AccountId"
+                },
+                "Tags",
+                "PmProgramme"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:pm-project-code",
+            "Value": {
+              "Fn::FindInMap": [
+                {
+                  "Ref": "AWS::AccountId"
+                },
+                "Tags",
+                "PmProjectCode"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:environment-name",
+            "Value": {
+              "Fn::FindInMap": [
+                {
+                  "Ref": "AWS::AccountId"
+                },
+                "Tags",
+                "BillingEnvironmentName"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "OutboundRuleDMSSGAllCIDRIP": {
+      "Type": "AWS::EC2::SecurityGroupEgress",
+      "Properties": {
+        "IpProtocol": -1,
+        "CidrIp": "0.0.0.0/0",
+        "GroupId": {
+          "Fn::GetAtt": [
+            "DMSSG",
+            "GroupId"
+          ]
+        }
+      }
+    },
+    "OutboundRuleDMSSGAllCIDRIP1": {
+      "Type": "AWS::EC2::SecurityGroupEgress",
+      "Properties": {
+        "IpProtocol": -1,
+        "CidrIpv6": "::/0",
+        "GroupId": {
+          "Fn::GetAtt": [
+            "DMSSG",
+            "GroupId"
+          ]
+        }
+      }
+    },
+    "OutboundRulePostgresRDSSGAllCIDRIP": {
+      "Condition": "IsDev",
+      "Type": "AWS::EC2::SecurityGroupEgress",
+      "Properties": {
+        "IpProtocol": -1,
+        "CidrIp": "0.0.0.0/0",
+        "GroupId": {
+          "Fn::GetAtt": [
+            "PostgresRDSSG",
+            "GroupId"
+          ]
+        }
+      }
+    },
+    "OutboundRulePostgresRDSSGAllCIDRIP1": {
+      "Condition": "IsDev",
+      "Type": "AWS::EC2::SecurityGroupEgress",
+      "Properties": {
+        "IpProtocol": -1,
+        "CidrIpv6": "::/0",
+        "GroupId": {
+          "Fn::GetAtt": [
+            "PostgresRDSSG",
+            "GroupId"
+          ]
+        }
+      }
+    },
+    "OutboundRuleEMRMasterSGAllCIDRIP": {
+      "Type": "AWS::EC2::SecurityGroupEgress",
+      "Properties": {
+        "IpProtocol": -1,
+        "CidrIp": "0.0.0.0/0",
+        "GroupId": {
+          "Fn::GetAtt": [
+            "EMRMasterSG",
+            "GroupId"
+          ]
+        }
+      }
+    },
+    "OutboundRuleEMRMasterSGAllCIDRIP1": {
+      "Type": "AWS::EC2::SecurityGroupEgress",
+      "Properties": {
+        "IpProtocol": -1,
+        "CidrIpv6": "::/0",
+        "GroupId": {
+          "Fn::GetAtt": [
+            "EMRMasterSG",
+            "GroupId"
+          ]
+        }
+      }
+    },
+    "OutboundRuleEMRSlaveSGAllCIDRIP": {
+      "Type": "AWS::EC2::SecurityGroupEgress",
+      "Properties": {
+        "IpProtocol": -1,
+        "CidrIp": "0.0.0.0/0",
+        "GroupId": {
+          "Fn::GetAtt": [
+            "EMRSlaveSG",
+            "GroupId"
+          ]
+        }
+      }
+    },
+    "OutboundRuleEMRSlaveSGAllCIDRIP1": {
+      "Type": "AWS::EC2::SecurityGroupEgress",
+      "Properties": {
+        "IpProtocol": -1,
+        "CidrIpv6": "::/0",
+        "GroupId": {
+          "Fn::GetAtt": [
+            "EMRSlaveSG",
+            "GroupId"
+          ]
+        }
+      }
+    },
+    "OutboundRuleServiceAccessSGAllCIDRIP": {
+      "Type": "AWS::EC2::SecurityGroupEgress",
+      "Properties": {
+        "IpProtocol": -1,
+        "CidrIpv6": "::/0",
+        "GroupId": {
+          "Fn::GetAtt": [
+            "EMRServiceAccessSG",
+            "GroupId"
+          ]
+        }
+      }
+    },
+    "OutboundRuleServiceAccessSGAllCIDRIP1": {
+      "Type": "AWS::EC2::SecurityGroupEgress",
+      "Properties": {
+        "IpProtocol": "tcp",
+        "FromPort": 8443,
+        "ToPort": 8443,
+        "DestinationSecurityGroupId": {
+          "Fn::GetAtt": [
+            "EMRSlaveSG",
+            "GroupId"
+          ]
+        },
+        "GroupId": {
+          "Fn::GetAtt": [
+            "EMRServiceAccessSG",
+            "GroupId"
+          ]
+        }
+      }
+    },
+    "OutboundRuleServiceAccessSGAllCIDRIP2": {
+      "Type": "AWS::EC2::SecurityGroupEgress",
+      "Properties": {
+        "IpProtocol": "tcp",
+        "FromPort": 8443,
+        "ToPort": 8443,
+        "DestinationSecurityGroupId": {
+          "Fn::GetAtt": [
+            "EMRMasterSG",
+            "GroupId"
+          ]
+        },
+        "GroupId": {
+          "Fn::GetAtt": [
+            "EMRServiceAccessSG",
+            "GroupId"
+          ]
+        }
+      }
+    },
+    "InboundRuleDMSSG": {
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "IpProtocol": "tcp",
+        "FromPort": 0,
+        "ToPort": 65535,
+        "SourceSecurityGroupId": {
+          "Fn::GetAtt": [
+            "DMSSG",
+            "GroupId"
+          ]
+        },
+        "GroupId": {
+          "Fn::GetAtt": [
+            "DMSSG",
+            "GroupId"
+          ]
+        }
+      }
+    },
+    "InboundRulePostgresRDSSG": {
+      "Condition": "IsDev",
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "IpProtocol": "tcp",
+        "FromPort": 0,
+        "ToPort": 65535,
+        "SourceSecurityGroupId": {
+          "Fn::GetAtt": [
+            "PostgresRDSSG",
+            "GroupId"
+          ]
+        },
+        "GroupId": {
+          "Fn::GetAtt": [
+            "PostgresRDSSG",
+            "GroupId"
+          ]
+        }
+      }
+    },
+    "InboundRulePostgresRDSSG1": {
+      "Condition": "IsDev",
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "IpProtocol": "tcp",
+        "FromPort": 0,
+        "ToPort": 65535,
+        "SourceSecurityGroupId": {
+          "Fn::GetAtt": [
+            "DMSSG",
+            "GroupId"
+          ]
+        },
+        "GroupId": {
+          "Fn::GetAtt": [
+            "PostgresRDSSG",
+            "GroupId"
+          ]
+        }
+      }
+    },
+    "InboundRulePostgresRDSSG2": {
+      "Condition": "IsDev",
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "IpProtocol": "tcp",
+        "FromPort": 5432,
+        "ToPort": 5432,
+        "SourceSecurityGroupId": {
+          "Ref": "JumpBoxSG"
+        },
+        "GroupId": {
+          "Fn::GetAtt": [
+            "PostgresRDSSG",
+            "GroupId"
+          ]
+        }
+      }
+    },
+    "InboundRulePostgresRDSSG3": {
+      "Condition": "IsDev",
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "IpProtocol": "tcp",
+        "FromPort": 5432,
+        "ToPort": 5432,
+        "SourceSecurityGroupId": {
+          "Fn::GetAtt": [
+            "EMRMasterSG",
+            "GroupId"
+          ]
+        },
+        "GroupId": {
+          "Fn::GetAtt": [
+            "PostgresRDSSG",
+            "GroupId"
+          ]
+        }
+      }
+    },
+    "InboundRulePostgresRDSSG4": {
+      "Condition": "IsDev",
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "IpProtocol": "tcp",
+        "FromPort": 5432,
+        "ToPort": 5432,
+        "SourceSecurityGroupId": {
+          "Fn::GetAtt": [
+            "EMRSlaveSG",
+            "GroupId"
+          ]
+        },
+        "GroupId": {
+          "Fn::GetAtt": [
+            "PostgresRDSSG",
+            "GroupId"
+          ]
+        }
+      }
+    },
+    "InboundRuleEMRMasterSG": {
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "IpProtocol": "tcp",
+        "FromPort": 0,
+        "ToPort": 65535,
+        "Description": "These reflexive rules allow inbound traffic from any instance associated with the specified security group. Using the default ElasticMapReduce-master for multiple clusters allows the core and task nodes to communicate with each other over any port.",
+        "SourceSecurityGroupId": {
+          "Fn::GetAtt": [
+            "EMRMasterSG",
+            "GroupId"
+          ]
+        },
+        "GroupId": {
+          "Fn::GetAtt": [
+            "EMRMasterSG",
+            "GroupId"
+          ]
+        }
+      }
+    },
+    "InboundRuleEMRMasterSG1": {
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "IpProtocol": "udp",
+        "FromPort": 0,
+        "ToPort": 65535,
+        "Description": "These reflexive rules allow inbound traffic from any instance associated with the specified security group. Using the default ElasticMapReduce-master for multiple clusters allows the core and task nodes to communicate with each other over any port.",
+        "SourceSecurityGroupId": {
+          "Fn::GetAtt": [
+            "EMRMasterSG",
+            "GroupId"
+          ]
+        },
+        "GroupId": {
+          "Fn::GetAtt": [
+            "EMRMasterSG",
+            "GroupId"
+          ]
+        }
+      }
+    },
+    "InboundRuleEMRMasterSG2": {
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "IpProtocol": "icmp",
+        "FromPort": -1,
+        "ToPort": -1,
+        "Description": "These reflexive rules allow inbound traffic from any instance associated with the specified security group. Using the default ElasticMapReduce-master for multiple clusters allows the core and task nodes to communicate with each other over any port.",
+        "SourceSecurityGroupId": {
+          "Fn::GetAtt": [
+            "EMRMasterSG",
+            "GroupId"
+          ]
+        },
+        "GroupId": {
+          "Fn::GetAtt": [
+            "EMRMasterSG",
+            "GroupId"
+          ]
+        }
+      }
+    },
+    "InboundRuleEMRMasterSG3": {
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "IpProtocol": "tcp",
+        "FromPort": 0,
+        "ToPort": 65535,
+        "Description": "These reflexive rules allow inbound traffic from any instance associated with the specified security group. Using the default ElasticMapReduce-master for multiple clusters allows the core and task nodes to communicate with each other over any port.",
+        "SourceSecurityGroupId": {
+          "Fn::GetAtt": [
+            "EMRSlaveSG",
+            "GroupId"
+          ]
+        },
+        "GroupId": {
+          "Fn::GetAtt": [
+            "EMRMasterSG",
+            "GroupId"
+          ]
+        }
+      }
+    },
+    "InboundRuleEMRMasterSG4": {
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "IpProtocol": "udp",
+        "FromPort": 0,
+        "ToPort": 65535,
+        "Description": "These reflexive rules allow inbound traffic from any instance associated with the specified security group. Using the default ElasticMapReduce-master for multiple clusters allows the core and task nodes to communicate with each other over any port.",
+        "SourceSecurityGroupId": {
+          "Fn::GetAtt": [
+            "EMRSlaveSG",
+            "GroupId"
+          ]
+        },
+        "GroupId": {
+          "Fn::GetAtt": [
+            "EMRMasterSG",
+            "GroupId"
+          ]
+        }
+      }
+    },
+    "InboundRuleEMRMasterSG5": {
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "IpProtocol": "icmp",
+        "FromPort": -1,
+        "ToPort": -1,
+        "Description": "These reflexive rules allow inbound traffic from any instance associated with the specified security group. Using the default ElasticMapReduce-master for multiple clusters allows the core and task nodes to communicate with each other over any port.",
+        "SourceSecurityGroupId": {
+          "Fn::GetAtt": [
+            "EMRSlaveSG",
+            "GroupId"
+          ]
+        },
+        "GroupId": {
+          "Fn::GetAtt": [
+            "EMRMasterSG",
+            "GroupId"
+          ]
+        }
+      }
+    },
+    "InboundRuleEMRMasterSG6": {
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "IpProtocol": "tcp",
+        "FromPort": 8443,
+        "ToPort": 8443,
+        "Description": "These rules allow the cluster manager to communicate with the master node.",
+        "SourceSecurityGroupId": {
+          "Fn::GetAtt": [
+            "EMRServiceAccessSG",
+            "GroupId"
+          ]
+        },
+        "GroupId": {
+          "Fn::GetAtt": [
+            "EMRMasterSG",
+            "GroupId"
+          ]
+        }
+      }
+    },
+    "InboundRuleEMRMasterSG7": {
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "IpProtocol": "tcp",
+        "FromPort": 8998,
+        "ToPort": 8998,
+        "Description": "Used for Sagemaker",
+        "CidrIpv6": "::/0",
+        "GroupId": {
+          "Fn::GetAtt": [
+            "EMRMasterSG",
+            "GroupId"
+          ]
+        }
+      }
+    },
+    "InboundRuleEMRMasterSG8": {
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "IpProtocol": "tcp",
+        "FromPort": 8998,
+        "ToPort": 8998,
+        "Description": "Used for Sagemaker",
+        "CidrIp": "0.0.0.0/0",
+        "GroupId": {
+          "Fn::GetAtt": [
+            "EMRMasterSG",
+            "GroupId"
+          ]
+        }
+      }
+    },
+    "InboundRuleEMRMasterSG9": {
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "IpProtocol": "tcp",
+        "FromPort": 22,
+        "ToPort": 22,
+        "SourceSecurityGroupId": {
+          "Ref": "EMRMasterSSHSourceIP"
+        },
+        "GroupId": {
+          "Fn::GetAtt": [
+            "EMRMasterSG",
+            "GroupId"
+          ]
+        }
+      }
+    },
+    "InboundRuleEMRSlaveSG": {
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "IpProtocol": "tcp",
+        "FromPort": 0,
+        "ToPort": 65535,
+        "Description": "These reflexive rules allow inbound traffic from any instance associated with the specified security group. Using the default ElasticMapReduce-master for multiple clusters allows the core and task nodes to communicate with each other over any port.",
+        "SourceSecurityGroupId": {
+          "Fn::GetAtt": [
+            "EMRSlaveSG",
+            "GroupId"
+          ]
+        },
+        "GroupId": {
+          "Fn::GetAtt": [
+            "EMRSlaveSG",
+            "GroupId"
+          ]
+        }
+      }
+    },
+    "InboundRuleEMRSlaveSG1": {
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "IpProtocol": "udp",
+        "FromPort": 0,
+        "ToPort": 65535,
+        "Description": "These reflexive rules allow inbound traffic from any instance associated with the specified security group. Using the default ElasticMapReduce-master for multiple clusters allows the core and task nodes to communicate with each other over any port.",
+        "SourceSecurityGroupId": {
+          "Fn::GetAtt": [
+            "EMRSlaveSG",
+            "GroupId"
+          ]
+        },
+        "GroupId": {
+          "Fn::GetAtt": [
+            "EMRSlaveSG",
+            "GroupId"
+          ]
+        }
+      }
+    },
+    "InboundRuleEMRSlaveSG2": {
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "IpProtocol": "icmp",
+        "FromPort": -1,
+        "ToPort": -1,
+        "Description": "These reflexive rules allow inbound traffic from any instance associated with the specified security group. Using the default ElasticMapReduce-master for multiple clusters allows the core and task nodes to communicate with each other over any port.",
+        "SourceSecurityGroupId": {
+          "Fn::GetAtt": [
+            "EMRSlaveSG",
+            "GroupId"
+          ]
+        },
+        "GroupId": {
+          "Fn::GetAtt": [
+            "EMRSlaveSG",
+            "GroupId"
+          ]
+        }
+      }
+    },
+    "InboundRuleEMRSlaveSG3": {
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "IpProtocol": "tcp",
+        "FromPort": 0,
+        "ToPort": 65535,
+        "Description": "These reflexive rules allow inbound traffic from any instance associated with the specified security group. Using the default ElasticMapReduce-master for multiple clusters allows the core and task nodes to communicate with each other over any port.",
+        "SourceSecurityGroupId": {
+          "Fn::GetAtt": [
+            "EMRMasterSG",
+            "GroupId"
+          ]
+        },
+        "GroupId": {
+          "Fn::GetAtt": [
+            "EMRSlaveSG",
+            "GroupId"
+          ]
+        }
+      }
+    },
+    "InboundRuleEMRSlaveSG4": {
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "IpProtocol": "udp",
+        "FromPort": 0,
+        "ToPort": 65535,
+        "Description": "These reflexive rules allow inbound traffic from any instance associated with the specified security group. Using the default ElasticMapReduce-master for multiple clusters allows the core and task nodes to communicate with each other over any port.",
+        "SourceSecurityGroupId": {
+          "Fn::GetAtt": [
+            "EMRMasterSG",
+            "GroupId"
+          ]
+        },
+        "GroupId": {
+          "Fn::GetAtt": [
+            "EMRSlaveSG",
+            "GroupId"
+          ]
+        }
+      }
+    },
+    "InboundRuleEMRSlaveSG5": {
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "IpProtocol": "icmp",
+        "FromPort": -1,
+        "ToPort": -1,
+        "Description": "These reflexive rules allow inbound traffic from any instance associated with the specified security group. Using the default ElasticMapReduce-master for multiple clusters allows the core and task nodes to communicate with each other over any port.",
+        "SourceSecurityGroupId": {
+          "Fn::GetAtt": [
+            "EMRMasterSG",
+            "GroupId"
+          ]
+        },
+        "GroupId": {
+          "Fn::GetAtt": [
+            "EMRSlaveSG",
+            "GroupId"
+          ]
+        }
+      }
+    },
+    "InboundRuleEMRSlaveSG6": {
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "IpProtocol": "tcp",
+        "FromPort": 8443,
+        "ToPort": 8443,
+        "Description": "These rules allow the cluster manager to communicate with the master node.",
+        "SourceSecurityGroupId": {
+          "Fn::GetAtt": [
+            "EMRServiceAccessSG",
+            "GroupId"
+          ]
+        },
+        "GroupId": {
+          "Fn::GetAtt": [
+            "EMRSlaveSG",
+            "GroupId"
+          ]
+        }
+      }
+    },
+    "InboundRuleEMRSlaveSG7": {
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "IpProtocol": "tcp",
+        "FromPort": 8998,
+        "ToPort": 8998,
+        "Description": "Used for Sagemaker",
+        "CidrIp": "0.0.0.0/0",
+        "GroupId": {
+          "Fn::GetAtt": [
+            "EMRSlaveSG",
+            "GroupId"
+          ]
+        }
+      }
+    },
+    "InboundRuleEMRSlaveSG8": {
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "IpProtocol": "tcp",
+        "FromPort": 8998,
+        "ToPort": 8998,
+        "Description": "Used for Sagemaker",
+        "CidrIpv6": "::/0",
+        "GroupId": {
+          "Fn::GetAtt": [
+            "EMRSlaveSG",
+            "GroupId"
+          ]
+        }
+      }
+    },
+    "InboundRuleEMRServiceAccessSG": {
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "IpProtocol": "tcp",
+        "FromPort": 9443,
+        "ToPort": 9443,
+        "SourceSecurityGroupId": {
+          "Fn::GetAtt": [
+            "EMRMasterSG",
+            "GroupId"
+          ]
+        },
+        "GroupId": {
+          "Fn::GetAtt": [
+            "EMRServiceAccessSG",
+            "GroupId"
+          ]
+        }
+      }
+    },
+    "PowerBISG": {
+      "Condition": "IsDev",
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "VpcId": {
+          "Fn::FindInMap": [
+            {
+              "Ref": "AWS::AccountId"
+            },
+            "VpcIds",
+            "defaultVPCId"
+          ]
+        },
+        "GroupDescription": "power bi security group",
+        "GroupName": "rx-gbs-datalake-powerbi-launch-sg",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "rx-gbs-datalake-powerbi-launch-sg"
+          },
+          {
+            "Key": "rx:billing:finance-activity-id",
+            "Value": {
+              "Fn::FindInMap": [
+                {
+                  "Ref": "AWS::AccountId"
+                },
+                "Tags",
+                "FinanceActivityId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:finance-entity-id",
+            "Value": {
+              "Fn::FindInMap": [
+                {
+                  "Ref": "AWS::AccountId"
+                },
+                "Tags",
+                "FinanceEntityId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:finance-management-centre-id",
+            "Value": {
+              "Fn::FindInMap": [
+                {
+                  "Ref": "AWS::AccountId"
+                },
+                "Tags",
+                "FinanceManagementCentreId"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:jira-project-code",
+            "Value": {
+              "Fn::FindInMap": [
+                {
+                  "Ref": "AWS::AccountId"
+                },
+                "Tags",
+                "JiraProjectCode"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:pm-programme",
+            "Value": {
+              "Fn::FindInMap": [
+                {
+                  "Ref": "AWS::AccountId"
+                },
+                "Tags",
+                "PmProgramme"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:pm-project-code",
+            "Value": {
+              "Fn::FindInMap": [
+                {
+                  "Ref": "AWS::AccountId"
+                },
+                "Tags",
+                "PmProjectCode"
+              ]
+            }
+          },
+          {
+            "Key": "rx:billing:environment-name",
+            "Value": {
+              "Fn::FindInMap": [
+                {
+                  "Ref": "AWS::AccountId"
+                },
+                "Tags",
+                "BillingEnvironmentName"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "InboundRulePowerBISG2": {
+      "Condition": "IsDev",
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "IpProtocol": "tcp",
+        "FromPort": 3389,
+        "ToPort": 3389,
+        "CidrIp": {
+          "Ref": "PowerBIRDPSource"
+        },
+        "GroupId": {
+          "Fn::GetAtt": [
+            "PowerBISG",
+            "GroupId"
+          ]
+        }
+      }
+    },
+    "OutboundRulePowerBISG": {
+      "Condition": "IsDev",
+      "Type": "AWS::EC2::SecurityGroupEgress",
+      "Properties": {
+        "IpProtocol": -1,
+        "CidrIp": "0.0.0.0/0",
+        "GroupId": {
+          "Fn::GetAtt": [
+            "PowerBISG",
+            "GroupId"
+          ]
+        }
+      }
+    },
+    "OutboundRulePowerBISG1": {
+      "Condition": "IsDev",
+      "Type": "AWS::EC2::SecurityGroupEgress",
+      "Properties": {
+        "IpProtocol": -1,
+        "CidrIpv6": "::/0",
+        "GroupId": {
+          "Fn::GetAtt": [
+            "PowerBISG",
+            "GroupId"
+          ]
+        }
+      }
+    }
+  },
+  "Outputs": {
+    "DMSSGOutput": {
+      "Description": "Security Group for DMS needs",
+      "Value": {
+        "Fn::GetAtt": [
+          "DMSSG",
+          "GroupId"
+        ]
+      },
+      "Export": {
+        "Name": {
+          "Fn::Sub": "dms-sg-${BillingEnvironmentName}"
+        }
+      }
+    },
+    "PostgresRDSSGOutput": {
+      "Description": "Security Group for Postgres RDS needs",
+      "Value": {
+        "Fn::GetAtt": [
+          "PostgresRDSSG",
+          "GroupId"
+        ]
+      },
+      "Export": {
+        "Name": {
+          "Fn::Sub": "postgres-rds-sg-${BillingEnvironmentName}"
+        }
+      }
+    },
+    "EMRMasterSGOutput": {
+      "Description": "Security Group for EMR master nodes",
+      "Value": {
+        "Fn::GetAtt": [
+          "EMRMasterSG",
+          "GroupId"
+        ]
+      },
+      "Export": {
+        "Name": {
+          "Fn::Sub": "emr-master-sg-${BillingEnvironmentName}"
+        }
+      }
+    },
+    "EMRSlaveSGOutput": {
+      "Description": "Security Group for EMR slave nodes",
+      "Value": {
+        "Fn::GetAtt": [
+          "EMRSlaveSG",
+          "GroupId"
+        ]
+      },
+      "Export": {
+        "Name": {
+          "Fn::Sub": "ems-slave-sg-${BillingEnvironmentName}"
+        }
+      }
+    },
+    "EMRServiceAccessSGOutput": {
+      "Description": "Security Group for EMR service access",
+      "Value": {
+        "Fn::GetAtt": [
+          "EMRServiceAccessSG",
+          "GroupId"
+        ]
+      },
+      "Export": {
+        "Name": {
+          "Fn::Sub": "ems-service-access-sg-${BillingEnvironmentName}"
+        }
+      }
+    },
+    "PowerBISGOutput": {
+      "Description": "Security Group for PowerBI needs",
+      "Value": {
+        "Fn::GetAtt": [
+          "PowerBISG",
+          "GroupId"
+        ]
+      },
+      "Export": {
+        "Name": {
+          "Fn::Sub": "power-bi-sg-${BillingEnvironmentName}"
+        }
+      }
+    }
+  }
+}

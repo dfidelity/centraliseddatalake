@@ -1,0 +1,364 @@
+{
+  "Type": "AWS::IAM::Role",
+  "Properties": {
+    "RoleName": "rx-gbs-datalake-glue-job-role",
+    "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Effect": "Allow",
+          "Principal": {
+            "Service": [
+              "glue.amazonaws.com"
+            ]
+          },
+          "Action": [
+            "sts:AssumeRole"
+          ]
+        }
+      ]
+    },
+    "Policies": [
+      {
+        "PolicyName": "EloquaS3Access",
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Action": [
+                "s3:PutAnalyticsConfiguration",
+                "s3:GetObjectVersionTagging",
+                "s3:CreateBucket",
+                "s3:ReplicateObject",
+                "s3:GetObjectAcl",
+                "s3:GetBucketObjectLockConfiguration",
+                "s3:DeleteBucketWebsite",
+                "s3:PutLifecycleConfiguration",
+                "s3:GetObjectVersionAcl",
+                "s3:DeleteObject",
+                "s3:GetBucketPolicyStatus",
+                "s3:GetObjectRetention",
+                "s3:GetBucketWebsite",
+                "s3:PutReplicationConfiguration",
+                "s3:PutObjectLegalHold",
+                "s3:GetObjectLegalHold",
+                "s3:GetBucketNotification",
+                "s3:PutBucketCORS",
+                "s3:GetReplicationConfiguration",
+                "s3:ListMultipartUploadParts",
+                "s3:PutObject",
+                "s3:GetObject",
+                "s3:PutBucketNotification",
+                "s3:PutBucketLogging",
+                "s3:GetAnalyticsConfiguration",
+                "s3:PutBucketObjectLockConfiguration",
+                "s3:GetObjectVersionForReplication",
+                "s3:GetLifecycleConfiguration",
+                "s3:GetInventoryConfiguration",
+                "s3:GetBucketTagging",
+                "s3:PutAccelerateConfiguration",
+                "s3:DeleteObjectVersion",
+                "s3:GetBucketLogging",
+                "s3:ListBucketVersions",
+                "s3:RestoreObject",
+                "s3:ListBucket",
+                "s3:GetAccelerateConfiguration",
+                "s3:GetBucketPolicy",
+                "s3:PutEncryptionConfiguration",
+                "s3:GetEncryptionConfiguration",
+                "s3:GetObjectVersionTorrent",
+                "s3:AbortMultipartUpload",
+                "s3:GetBucketRequestPayment",
+                "s3:DeleteBucketOwnershipControls",
+                "s3:GetObjectTagging",
+                "s3:GetMetricsConfiguration",
+                "s3:GetBucketOwnershipControls",
+                "s3:DeleteBucket",
+                "s3:PutBucketVersioning",
+                "s3:GetBucketPublicAccessBlock",
+                "s3:ListBucketMultipartUploads",
+                "s3:PutMetricsConfiguration",
+                "s3:PutBucketOwnershipControls",
+                "s3:GetBucketVersioning",
+                "s3:GetBucketAcl",
+                "s3:PutInventoryConfiguration",
+                "s3:GetObjectTorrent",
+                "s3:PutBucketWebsite",
+                "s3:PutBucketRequestPayment",
+                "s3:PutObjectRetention",
+                "s3:GetBucketCORS",
+                "s3:GetBucketLocation",
+                "s3:ReplicateDelete",
+                "s3:GetObjectVersion"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::Sub": "arn:aws:s3:::rx-gbs-datalake-landingzone-${BillingEnvironmentName}"
+                },
+                {
+                  "Fn::Sub": "arn:aws:s3:::rx-gbs-datalake-landingzone-${BillingEnvironmentName}/*"
+                },
+                {
+                  "Fn::Sub": "arn:aws:s3:::rx-gbs-datalake-processingzone-${BillingEnvironmentName}"
+                },
+                {
+                  "Fn::Sub": "arn:aws:s3:::rx-gbs-datalake-processingzone-${BillingEnvironmentName}/*"
+                },
+                {
+                  "Fn::Sub": "arn:aws:s3:::rx-gbs-datalake-rawzone-${BillingEnvironmentName}"
+                },
+                {
+                  "Fn::Sub": "arn:aws:s3:::rx-gbs-datalake-rawzone-${BillingEnvironmentName}/*"
+                },
+                {
+                  "Fn::Sub": "arn:aws:s3:::rx-gbs-datalake-refinedzone-${BillingEnvironmentName}"
+                },
+                {
+                  "Fn::Sub": "arn:aws:s3:::rx-gbs-datalake-refinedzone-${BillingEnvironmentName}/*"
+                },
+                {
+                  "Fn::Sub": "arn:aws:s3:::rx-gbs-datalake-logs-${BillingEnvironmentName}"
+                },
+                {
+                  "Fn::Sub": "arn:aws:s3:::rx-gbs-datalake-logs-${BillingEnvironmentName}/*"
+                },
+                {
+                  "Fn::Sub": "arn:aws:s3:::rx-gbs-datalake-non-anonymized-${BillingEnvironmentName}"
+                },
+                {
+                  "Fn::Sub": "arn:aws:s3:::rx-gbs-datalake-non-anonymized-${BillingEnvironmentName}/*"
+                }
+              ]
+            },
+            {
+              "Action": [
+                "s3:GetAccountPublicAccessBlock",
+                "s3:ListAllMyBuckets",
+                "s3:ListAccessPoints",
+                "s3:CreateJob"
+              ],
+              "Effect": "Allow",
+              "Resource": "*"
+            }
+          ]
+        }
+      },
+      {
+        "PolicyName": "GlueJobRoleKMSPermissions",
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Action": [
+                "kms:Decrypt",
+                "kms:ListKeyPolicies",
+                "kms:ListRetirableGrants",
+                "kms:GetKeyPolicy",
+                "kms:Verify",
+                "kms:ListResourceTags",
+                "kms:GenerateDataKeyPair",
+                "kms:ReEncryptFrom",
+                "kms:ListGrants",
+                "kms:GetParametersForImport",
+                "kms:GetKeyRotationStatus",
+                "kms:Encrypt",
+                "kms:GenerateDataKey",
+                "kms:ReEncryptTo",
+                "kms:DescribeKey"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::ImportValue": {
+                    "Fn::Sub": "dms-kms-key-arn-${BillingEnvironmentName}"
+                  }
+                },
+                {
+                  "Fn::ImportValue": {
+                    "Fn::Sub": "processing-zone-kms-key-arn-${BillingEnvironmentName}"
+                  }
+                },
+                {
+                  "Fn::ImportValue": {
+                    "Fn::Sub": "refined-zone-kms-key-arn-${BillingEnvironmentName}"
+                  }
+                },
+                {
+                  "Fn::ImportValue": {
+                    "Fn::Sub": "raw-zone-kms-key-arn-${BillingEnvironmentName}"
+                  }
+                },
+                {
+                  "Fn::ImportValue": {
+                    "Fn::Sub": "landing-zone-kms-key-arn-${BillingEnvironmentName}"
+                  }
+                },
+                {
+                  "Fn::ImportValue": {
+                    "Fn::Sub": "logs-kms-key-arn-${BillingEnvironmentName}"
+                  }
+                },
+                {
+                  "Fn::ImportValue": {
+                    "Fn::Sub": "non-anonymized-kms-key-arn-${BillingEnvironmentName}"
+                  }
+                },
+                {
+                  "Fn::ImportValue": {
+                    "Fn::Sub": "ssm-kms-key-arn-${BillingEnvironmentName}"
+                  }
+                }
+              ]
+            },
+            {
+              "Action": [
+                "kms:DescribeCustomKeyStores",
+                "kms:ListKeys",
+                "kms:ListAliases"
+              ],
+              "Effect": "Allow",
+              "Resource": "*"
+            }
+          ]
+        }
+      },
+      {
+        "PolicyName": "EloquaLogAccess",
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Action": [
+                "logs:*"
+              ],
+              "Resource": "*"
+            }
+          ]
+        }
+      },
+      {
+        "PolicyName": "EloquaGlueAccess",
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Action": [
+                "glue:*"
+              ],
+              "Resource": "*"
+            }
+          ]
+        }
+      },
+      {
+        "PolicyName": "EloquaAthenaAccess",
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Action": [
+                "athena:StartQueryExecution",
+                "athena:CancelQueryExecution",
+                "athena:StopQueryExecution",
+                "athena:GetQueryExecution",
+                "athena:GetQueryResults",
+                "athena:GetQueryExecutions",
+                "athena:ListQueryExecutions"
+              ],
+              "Resource": "*"
+            }
+          ]
+        }
+      },
+      {
+        "PolicyName": "GlueJobLakeFormationAccess",
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Action": [
+                "lakeformation:List*",
+                "lakeformation:Describe*",
+                "lakeformation:Get*"
+              ],
+              "Resource": "*"
+            }
+          ]
+        }
+      },
+      {
+        "PolicyName": "GlueJobIAMAccess",
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Action": [
+                "iam:ListRoleTags",
+                "iam:ListServerCertificates",
+                "iam:ListPoliciesGrantingServiceAccess",
+                "iam:ListInstanceProfileTags",
+                "iam:ListServiceSpecificCredentials",
+                "iam:ListMFADevices",
+                "iam:ListSigningCertificates",
+                "iam:ListVirtualMFADevices",
+                "iam:ListInstanceProfilesForRole",
+                "iam:ListSSHPublicKeys",
+                "iam:ListAttachedRolePolicies",
+                "iam:ListOpenIDConnectProviderTags",
+                "iam:ListAttachedUserPolicies",
+                "iam:ListSAMLProviderTags",
+                "iam:ListAttachedGroupPolicies",
+                "iam:ListPolicyTags",
+                "iam:ListRolePolicies",
+                "iam:ListAccessKeys",
+                "iam:ListPolicies",
+                "iam:ListSAMLProviders",
+                "iam:ListCloudFrontPublicKeys",
+                "iam:ListGroupPolicies",
+                "iam:ListEntitiesForPolicy",
+                "iam:ListRoles",
+                "iam:ListUserPolicies",
+                "iam:ListInstanceProfiles",
+                "iam:ListPolicyVersions",
+                "iam:ListOpenIDConnectProviders",
+                "iam:ListGroupsForUser",
+                "iam:ListServerCertificateTags",
+                "iam:ListAccountAliases",
+                "iam:ListUsers",
+                "iam:ListGroups",
+                "iam:ListMFADeviceTags",
+                "iam:ListSTSRegionalEndpointsStatus",
+                "iam:GetLoginProfile",
+                "iam:ListUserTags",
+                "iam:GetAccountSummary",
+                "iam:GetRole"
+              ],
+              "Resource": "*"
+            }
+          ]
+        }
+      },
+      {
+        "PolicyName": "GlueJobCloudWatchAccess",
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Action": [
+                "cloudwatch:PutMetricData"
+              ],
+              "Resource": "*"
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

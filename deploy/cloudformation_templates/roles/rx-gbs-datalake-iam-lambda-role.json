@@ -1,0 +1,587 @@
+{
+  "Type": "AWS::IAM::Role",
+  "DependsOn": [
+    "EMRRole"
+  ],
+  "Properties": {
+    "RoleName": "rx-gbs-datalake-lambda-service-role",
+    "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Action": "sts:AssumeRole",
+          "Effect": "Allow",
+          "Principal": {
+            "Service": [
+              "lambda.amazonaws.com"
+            ]
+          }
+        }
+      ]
+    },
+    "Policies": [
+      {
+        "PolicyName": "rx-gbs-datalake-allow-run-job-flow",
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Action": [
+                "elasticmapreduce:RunJobFlow",
+                "elasticmapreduce:ListEditors"
+              ],
+              "Effect": "Allow",
+              "Resource": "*"
+            },
+            {
+              "Action": [
+                "elasticmapreduce:*"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                "arn:aws:elasticmapreduce:*:*:cluster/*",
+                "arn:aws:elasticmapreduce:*:*:editor/*"
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "PolicyName": "rx-gbs-datalake-step-function-access",
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Action": [
+                "states:DescribeStateMachineForExecution",
+                "states:DescribeActivity",
+                "states:DescribeStateMachine",
+                "states:DescribeExecution",
+                "states:ListExecutions",
+                "states:GetExecutionHistory",
+                "states:GetActivityTask",
+                "states:ListTagsForResource"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::Sub": "arn:aws:states:${AWS::Region}:${AWS::AccountId}:stateMachine:rx-gbs-datalake-submit-emr-rawzone"
+                },
+                {
+                  "Fn::Sub": "arn:aws:states:${AWS::Region}:${AWS::AccountId}:activity:*"
+                },
+                {
+                  "Fn::Sub": "arn:aws:states:${AWS::Region}:${AWS::AccountId}:execution:rx-gbs-datalake-submit-emr-rawzone:*"
+                }
+              ]
+            },
+            {
+              "Action": [
+                "states:SendTaskSuccess",
+                "states:ListStateMachines",
+                "states:SendTaskFailure",
+                "states:ListActivities",
+                "states:SendTaskHeartbeat"
+              ],
+              "Effect": "Allow",
+              "Resource": "*"
+            }
+          ]
+        }
+      },
+      {
+        "PolicyName": "rx-gbs-datalake-ec2-start-stop",
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Action": [
+                "ec2:StartInstances",
+                "ec2:StopInstances"
+              ],
+              "Effect": "Allow",
+              "Resource": "*"
+            }
+          ]
+        }
+      },
+      {
+        "PolicyName": "rx-gbs-datalake-dms-modify-task",
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Action": [
+                "dms:ModifyReplicationTask"
+              ],
+              "Effect": "Allow",
+              "Resource": "*"
+            },
+            {
+              "Action": [
+                "dms:StartReplicationTask",
+                "dms:StopReplicationTask",
+                "dms:DescribeReplicationTasks",
+                "dms:ModifyReplicationInstance",
+                "dms:DescribeReplicationInstances"
+              ],
+              "Effect": "Allow",
+              "Resource": "*"
+            }
+          ]
+        }
+      },
+      {
+        "PolicyName": "rx-gbs-datalake-lambda-s3-access",
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Action": [
+                "s3:PutAnalyticsConfiguration",
+                "s3:GetObjectVersionTagging",
+                "s3:CreateBucket",
+                "s3:ReplicateObject",
+                "s3:GetObjectAcl",
+                "s3:GetBucketObjectLockConfiguration",
+                "s3:DeleteBucketWebsite",
+                "s3:PutLifecycleConfiguration",
+                "s3:GetObjectVersionAcl",
+                "s3:DeleteObject",
+                "s3:GetBucketPolicyStatus",
+                "s3:GetObjectRetention",
+                "s3:GetBucketWebsite",
+                "s3:PutReplicationConfiguration",
+                "s3:PutObjectLegalHold",
+                "s3:GetObjectLegalHold",
+                "s3:GetBucketNotification",
+                "s3:PutBucketCORS",
+                "s3:GetReplicationConfiguration",
+                "s3:ListMultipartUploadParts",
+                "s3:PutObject",
+                "s3:GetObject",
+                "s3:PutBucketNotification",
+                "s3:PutBucketLogging",
+                "s3:GetAnalyticsConfiguration",
+                "s3:PutBucketObjectLockConfiguration",
+                "s3:GetObjectVersionForReplication",
+                "s3:GetLifecycleConfiguration",
+                "s3:GetInventoryConfiguration",
+                "s3:GetBucketTagging",
+                "s3:PutAccelerateConfiguration",
+                "s3:DeleteObjectVersion",
+                "s3:GetBucketLogging",
+                "s3:ListBucketVersions",
+                "s3:RestoreObject",
+                "s3:ListBucket",
+                "s3:GetAccelerateConfiguration",
+                "s3:GetBucketPolicy",
+                "s3:PutEncryptionConfiguration",
+                "s3:GetEncryptionConfiguration",
+                "s3:GetObjectVersionTorrent",
+                "s3:AbortMultipartUpload",
+                "s3:GetBucketRequestPayment",
+                "s3:DeleteBucketOwnershipControls",
+                "s3:GetObjectTagging",
+                "s3:GetMetricsConfiguration",
+                "s3:GetBucketOwnershipControls",
+                "s3:DeleteBucket",
+                "s3:PutBucketVersioning",
+                "s3:GetBucketPublicAccessBlock",
+                "s3:ListBucketMultipartUploads",
+                "s3:PutMetricsConfiguration",
+                "s3:PutBucketOwnershipControls",
+                "s3:GetBucketVersioning",
+                "s3:GetBucketAcl",
+                "s3:PutInventoryConfiguration",
+                "s3:GetObjectTorrent",
+                "s3:PutBucketWebsite",
+                "s3:PutBucketRequestPayment",
+                "s3:PutObjectRetention",
+                "s3:GetBucketCORS",
+                "s3:GetBucketLocation",
+                "s3:ReplicateDelete",
+                "s3:GetObjectVersion"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::Sub": "arn:aws:s3:::rx-gbs-datalake-landingzone-${BillingEnvironmentName}"
+                },
+                {
+                  "Fn::Sub": "arn:aws:s3:::rx-gbs-datalake-landingzone-${BillingEnvironmentName}/*"
+                },
+                {
+                  "Fn::Sub": "arn:aws:s3:::rx-gbs-datalake-processingzone-${BillingEnvironmentName}"
+                },
+                {
+                  "Fn::Sub": "arn:aws:s3:::rx-gbs-datalake-processingzone-${BillingEnvironmentName}/*"
+                },
+                {
+                  "Fn::Sub": "arn:aws:s3:::rx-gbs-datalake-rawzone-${BillingEnvironmentName}"
+                },
+                {
+                  "Fn::Sub": "arn:aws:s3:::rx-gbs-datalake-rawzone-${BillingEnvironmentName}/*"
+                },
+                {
+                  "Fn::Sub": "arn:aws:s3:::rx-gbs-datalake-refinedzone-${BillingEnvironmentName}"
+                },
+                {
+                  "Fn::Sub": "arn:aws:s3:::rx-gbs-datalake-refinedzone-${BillingEnvironmentName}/*"
+                },
+                {
+                  "Fn::Sub": "arn:aws:s3:::rx-gbs-datalake-logs-${BillingEnvironmentName}"
+                },
+                {
+                  "Fn::Sub": "arn:aws:s3:::rx-gbs-datalake-logs-${BillingEnvironmentName}/*"
+                },
+                {
+                  "Fn::Sub": "arn:aws:s3:::rx-gbs-datalake-non-anonymized-${BillingEnvironmentName}"
+                },
+                {
+                  "Fn::Sub": "arn:aws:s3:::rx-gbs-datalake-non-anonymized-${BillingEnvironmentName}/*"
+                }
+              ]
+            },
+            {
+              "Action": [
+                "s3:GetAccountPublicAccessBlock",
+                "s3:ListAllMyBuckets",
+                "s3:ListAccessPoints",
+                "s3:CreateJob"
+              ],
+              "Effect": "Allow",
+              "Resource": "*"
+            }
+          ]
+        }
+      },
+      {
+        "PolicyName": "rx-gbs-datalake-s3-kms-access",
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Action": [
+                "kms:Decrypt",
+                "kms:ListKeyPolicies",
+                "kms:ListRetirableGrants",
+                "kms:GetKeyPolicy",
+                "kms:Verify",
+                "kms:ListResourceTags",
+                "kms:GenerateDataKeyPair",
+                "kms:ReEncryptFrom",
+                "kms:ListGrants",
+                "kms:GetParametersForImport",
+                "kms:GetKeyRotationStatus",
+                "kms:Encrypt",
+                "kms:GenerateDataKey",
+                "kms:ReEncryptTo",
+                "kms:DescribeKey"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::ImportValue": {
+                    "Fn::Sub": "dms-kms-key-arn-${BillingEnvironmentName}"
+                  }
+                },
+                {
+                  "Fn::ImportValue": {
+                    "Fn::Sub": "processing-zone-kms-key-arn-${BillingEnvironmentName}"
+                  }
+                },
+                {
+                  "Fn::ImportValue": {
+                    "Fn::Sub": "refined-zone-kms-key-arn-${BillingEnvironmentName}"
+                  }
+                },
+                {
+                  "Fn::ImportValue": {
+                    "Fn::Sub": "raw-zone-kms-key-arn-${BillingEnvironmentName}"
+                  }
+                },
+                {
+                  "Fn::ImportValue": {
+                    "Fn::Sub": "landing-zone-kms-key-arn-${BillingEnvironmentName}"
+                  }
+                },
+                {
+                  "Fn::ImportValue": {
+                    "Fn::Sub": "logs-kms-key-arn-${BillingEnvironmentName}"
+                  }
+                },
+                {
+                  "Fn::ImportValue": {
+                    "Fn::Sub": "non-anonymized-kms-key-arn-${BillingEnvironmentName}"
+                  }
+                },
+                {
+                  "Fn::ImportValue": {
+                    "Fn::Sub": "ssm-kms-key-arn-${BillingEnvironmentName}"
+                  }
+                }
+              ]
+            },
+            {
+              "Action": [
+                "kms:DescribeCustomKeyStores",
+                "kms:ListKeys",
+                "kms:ListAliases"
+              ],
+              "Effect": "Allow",
+              "Resource": "*"
+            }
+          ]
+        }
+      },
+      {
+        "PolicyName": "rx-gbs-datalake-dms-access-to-s3",
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Action": [
+                "s3:PutObject",
+                "s3:DeleteObject",
+                "s3:PutObjectTagging"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::Sub": "arn:aws:s3:::rx-gbs-datalake-landingzone-${BillingEnvironmentName}/*"
+                },
+                {
+                  "Fn::Sub": "arn:aws:s3:::rx-gbs-datalake-processingzone-${BillingEnvironmentName}/*"
+                },
+                {
+                  "Fn::Sub": "arn:aws:s3:::rx-gbs-datalake-rawzone-${BillingEnvironmentName}/*"
+                },
+                {
+                  "Fn::Sub": "arn:aws:s3:::rx-gbs-datalake-refinedzone-${BillingEnvironmentName}/*"
+                },
+                {
+                  "Fn::Sub": "arn:aws:s3:::rx-gbs-datalake-logs-${BillingEnvironmentName}/*"
+                }
+              ]
+            },
+            {
+              "Action": [
+                "s3:ListBucket",
+                "s3:GetObject"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::Sub": "arn:aws:s3:::rx-gbs-datalake-landingzone-${BillingEnvironmentName}"
+                },
+                {
+                  "Fn::Sub": "arn:aws:s3:::rx-gbs-datalake-processingzone-${BillingEnvironmentName}"
+                },
+                {
+                  "Fn::Sub": "arn:aws:s3:::rx-gbs-datalake-rawzone-${BillingEnvironmentName}"
+                },
+                {
+                  "Fn::Sub": "arn:aws:s3:::rx-gbs-datalake-refinedzone-${BillingEnvironmentName}"
+                },
+                {
+                  "Fn::Sub": "arn:aws:s3:::rx-gbs-datalake-logs-${BillingEnvironmentName}"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "PolicyName": "rx-gbs-datalake-dms-reconcilation-logs",
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Action": [
+                "logs:CreateLogGroup"
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::Sub": "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*"
+              }
+            },
+            {
+              "Action": [
+                "logs:CreateLogStream",
+                "logs:PutLogEvents"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::Sub": "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/rx-gbs-datalake-dms-reconcilation-reports:*"
+                }
+              ]
+            },
+            {
+              "Action": [
+                "ssm:DescribeParameters"
+              ],
+              "Effect": "Allow",
+              "Resource": "*"
+            },
+            {
+              "Action": [
+                "kms:Decrypt"
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Ref": "DmsReconciliationKMSKey"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "PolicyName": "rx-gbs-datalake-athena-access-policy",
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Action": [
+                "athena:StartQueryExecution",
+                "s3:PutAnalyticsConfiguration",
+                "s3:GetObjectVersionTagging",
+                "athena:GetQueryResults",
+                "s3:CreateBucket",
+                "athena:GetNamedQuery",
+                "s3:ReplicateObject",
+                "s3:GetObjectAcl",
+                "s3:GetBucketObjectLockConfiguration",
+                "s3:PutLifecycleConfiguration",
+                "athena:StopQueryExecution",
+                "s3:GetObjectVersionAcl",
+                "s3:DeleteObject",
+                "s3:GetBucketPolicyStatus",
+                "athena:GetQueryResultsStream",
+                "s3:GetObjectRetention",
+                "s3:GetBucketWebsite",
+                "s3:PutReplicationConfiguration",
+                "s3:PutObjectLegalHold",
+                "s3:GetObjectLegalHold",
+                "s3:GetBucketNotification",
+                "s3:PutBucketCORS",
+                "s3:GetReplicationConfiguration",
+                "athena:ListNamedQueries",
+                "s3:ListMultipartUploadParts",
+                "s3:PutObject",
+                "s3:GetObject",
+                "s3:PutBucketNotification",
+                "athena:CreateNamedQuery",
+                "s3:DescribeJob",
+                "s3:PutBucketLogging",
+                "s3:GetAnalyticsConfiguration",
+                "athena:BatchGetNamedQuery",
+                "s3:PutBucketObjectLockConfiguration",
+                "s3:GetObjectVersionForReplication",
+                "athena:BatchGetQueryExecution",
+                "s3:GetLifecycleConfiguration",
+                "s3:ListBucketByTags",
+                "s3:GetInventoryConfiguration",
+                "s3:GetBucketTagging",
+                "s3:PutAccelerateConfiguration",
+                "s3:GetBucketLogging",
+                "s3:ListBucketVersions",
+                "s3:RestoreObject",
+                "s3:GetAccelerateConfiguration",
+                "s3:GetBucketPolicy",
+                "athena:ListQueryExecutions",
+                "s3:PutEncryptionConfiguration",
+                "athena:GetWorkGroup",
+                "s3:GetEncryptionConfiguration",
+                "s3:GetObjectVersionTorrent",
+                "s3:AbortMultipartUpload",
+                "s3:GetBucketRequestPayment",
+                "s3:UpdateJobPriority",
+                "s3:GetObjectTagging",
+                "s3:GetMetricsConfiguration",
+                "s3:PutBucketVersioning",
+                "s3:GetBucketPublicAccessBlock",
+                "s3:ListBucketMultipartUploads",
+                "s3:PutMetricsConfiguration",
+                "s3:UpdateJobStatus",
+                "s3:GetBucketVersioning",
+                "s3:GetBucketAcl",
+                "athena:ListTagsForResource",
+                "s3:PutInventoryConfiguration",
+                "s3:GetObjectTorrent",
+                "s3:PutBucketWebsite",
+                "s3:PutBucketRequestPayment",
+                "s3:PutObjectRetention",
+                "athena:CancelQueryExecution",
+                "athena:GetQueryExecution",
+                "s3:GetBucketCORS",
+                "s3:GetBucketLocation",
+                "s3:ReplicateDelete",
+                "s3:GetObjectVersion"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::Sub": "arn:aws:athena:eu-west-1:${AWS::AccountId}:workgroup/primary"
+                },
+                "arn:aws:s3:::*/*",
+                "arn:aws:s3:*:*:job/*",
+                {
+                  "Fn::Sub": "arn:aws:s3:::aws-athena-query-results-${AWS::AccountId}-eu-west-1"
+                }
+              ]
+            },
+            {
+              "Action": [
+                "s3:ListJobs",
+                "athena:GetNamespace",
+                "athena:GetQueryExecutions",
+                "athena:ListWorkGroups",
+                "athena:GetCatalogs",
+                "athena:GetNamespaces",
+                "s3:GetAccountPublicAccessBlock",
+                "athena:GetExecutionEngine",
+                "athena:GetExecutionEngines",
+                "athena:GetTables",
+                "athena:GetTable",
+                "s3:CreateJob",
+                "athena:RunQuery"
+              ],
+              "Effect": "Allow",
+              "Resource": "*"
+            }
+          ]
+        }
+      },
+      {
+        "PolicyName": "rx-gbs-datalake-sns-publish-receive-policy",
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Action": [
+                "sns:ListEndpointsByPlatformApplication",
+                "sns:ListSubscriptionsByTopic",
+                "sns:Publish",
+                "sns:ListTopics",
+                "sns:ListSubscriptions",
+                "sns:ListPlatformApplications",
+                "sns:Receive"
+              ],
+              "Effect": "Allow",
+              "Resource": "*"
+            }
+          ]
+        }
+      }
+    ],
+    "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+      "arn:aws:iam::aws:policy/AWSStepFunctionsFullAccess",
+      "arn:aws:iam::aws:policy/service-role/AmazonElasticMapReduceRole",
+      "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole",
+      "arn:aws:iam::aws:policy/service-role/AWSGlueServiceRole"
+    ]
+  }
+}

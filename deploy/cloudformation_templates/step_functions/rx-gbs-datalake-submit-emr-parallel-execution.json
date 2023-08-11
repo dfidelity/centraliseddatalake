@@ -1,0 +1,546 @@
+{
+  "Type": "AWS::StepFunctions::StateMachine",
+  "DependsOn": [
+    "StepFunctionServiceRole"
+  ],
+  "Properties": {
+    "Tags": [
+      {
+        "Key": "Name",
+        "Value": "rx-gbs-datalake-submit-multiple-execution"
+      },
+      {
+        "Key": "rx:billing:finance-activity-id",
+        "Value": {
+          "Fn::FindInMap": [
+            "General",
+            "Tags",
+            "FinanceActivityId"
+          ]
+        }
+      },
+      {
+        "Key": "rx:billing:finance-entity-id",
+        "Value": {
+          "Fn::FindInMap": [
+            "General",
+            "Tags",
+            "FinanceEntityId"
+          ]
+        }
+      },
+      {
+        "Key": "rx:billing:finance-management-centre-id",
+        "Value": {
+          "Fn::FindInMap": [
+            "General",
+            "Tags",
+            "FinanceManagementCentreId"
+          ]
+        }
+      },
+      {
+        "Key": "rx:billing:jira-project-code",
+        "Value": {
+          "Fn::FindInMap": [
+            "General",
+            "Tags",
+            "JiraProjectCode"
+          ]
+        }
+      },
+      {
+        "Key": "rx:billing:pm-programme",
+        "Value": {
+          "Fn::FindInMap": [
+            "General",
+            "Tags",
+            "PmProgramme"
+          ]
+        }
+      },
+      {
+        "Key": "rx:billing:pm-project-code",
+        "Value": {
+          "Fn::FindInMap": [
+            "General",
+            "Tags",
+            "PmProjectCode"
+          ]
+        }
+      },
+      {
+        "Key": "rx:billing:environment-name",
+        "Value": {
+          "Ref": "BillingEnvironmentName"
+        }
+      }
+    ],
+    "StateMachineName": {
+      "Fn::Sub": "rx-gbs-datalake-submit-multiple-execution-${BillingEnvironmentName}"
+    },
+    "Definition": {
+      "StartAt": "Check-start-state",
+      "States": {
+        "Check-start-state": {
+          "Type": "Choice",
+          "Choices": [
+            {
+              "Variable": "$.startFrom",
+              "StringEquals": "DMS",
+              "Next": "DMSTasks"
+            },
+            {
+              "Variable": "$.startFrom",
+              "StringEquals": "EMR",
+              "Next": "MultipleEMRExecution"
+            }
+          ]
+        },
+        "DMSTasks": {
+          "Type": "Map",
+          "ItemsPath": "$.dms_tasks",
+          "MaxConcurrency": 4,
+          "ResultPath": "$.dms_tasks",
+          "Iterator": {
+            "StartAt": "ReplicationInstanceUpgrade",
+            "States": {
+              "ReplicationInstanceUpgrade": {
+                "Type": "Task",
+                "Resource": {
+                  "Fn::GetAtt": [
+                    "DMSUpgradeReplicationInstanceLambda",
+                    "Arn"
+                  ]
+                },
+                "ResultPath": "$.replication_instance_status",
+                "Next": "wait-for-RIU-to-finish"
+              },
+              "wait-for-RIU-to-finish": {
+                "Type": "Wait",
+                "Seconds": 120,
+                "Next": "ReplicationInstanceStatusCheck"
+              },
+              "ReplicationInstanceStatusCheck": {
+                "Type": "Task",
+                "Resource": {
+                  "Fn::GetAtt": [
+                    "DMSReplicationInstanceStatusLambda",
+                    "Arn"
+                  ]
+                },
+                "ResultPath": "$.replication_instance_status",
+                "Next": "check-ri-status"
+              },
+              "check-ri-status": {
+                "Type": "Choice",
+                "Choices": [
+                  {
+                    "Variable": "$.replication_instance_status",
+                    "StringEquals": "available",
+                    "Next": "DMSStartAllTaskPS"
+                  },
+                  {
+                    "Not": {
+                      "Variable": "$.replication_instance_status",
+                      "StringEquals": "available"
+                    },
+                    "Next": "wait-for-RIU-to-finish"
+                  }
+                ]
+              },
+              "DMSStartAllTaskPS": {
+                "Type": "Map",
+                "ItemsPath": "$.tasks",
+                "MaxConcurrency": 12,
+                "ResultPath": "$.tasks",
+                "Parameters": {
+                  "taskname.$": "$$.Map.Item.Value"
+                },
+                "Iterator": {
+                  "StartAt": "DMSStartTaskPS",
+                  "States": {
+                    "DMSStartTaskPS": {
+                      "Type": "Task",
+                      "Resource": {
+                        "Fn::GetAtt": [
+                          "DMSRunTaskLambda",
+                          "Arn"
+                        ]
+                      },
+                      "ResultPath": "$.taskname",
+                      "Next": "DMSTaskStatusCheck"
+                    },
+                    "DMSTaskStatusCheck": {
+                      "Type": "Task",
+                      "Resource": {
+                        "Fn::GetAtt": [
+                          "DMSTaskStatusLambda",
+                          "Arn"
+                        ]
+                      },
+                      "ResultPath": "$.taskstatus",
+                      "Next": "check-dms-status"
+                    },
+                    "check-dms-status": {
+                      "Type": "Choice",
+                      "Choices": [
+                        {
+                          "Variable": "$.taskstatus",
+                          "StringEquals": "failed",
+                          "Next": "dms-failed"
+                        },
+                        {
+                          "Variable": "$.taskstatus",
+                          "StringEquals": "modifying",
+                          "Next": "wait-for-DMS-to-finish"
+                        },
+                        {
+                          "Variable": "$.taskstatus",
+                          "StringEquals": "ready",
+                          "Next": "wait-for-DMS-to-finish"
+                        },
+                        {
+                          "Variable": "$.taskstatus",
+                          "StringEquals": "running",
+                          "Next": "wait-for-DMS-to-finish"
+                        },
+                        {
+                          "Variable": "$.taskstatus",
+                          "StringEquals": "starting",
+                          "Next": "wait-for-DMS-to-finish"
+                        },
+                        {
+                          "Variable": "$.taskstatus",
+                          "StringEquals": "stopped",
+                          "Next": "CallNextState"
+                        },
+                        {
+                          "Variable": "$.taskstatus",
+                          "StringEquals": "stopping",
+                          "Next": "wait-for-DMS-to-finish"
+                        }
+                      ]
+                    },
+                    "wait-for-DMS-to-finish": {
+                      "Type": "Wait",
+                      "Seconds": 600,
+                      "Next": "DMSTaskStatusCheck"
+                    },
+                    "dms-failed": {
+                      "Type": "Task",
+                      "Resource": {
+                        "Fn::GetAtt": [
+                          "DMSSendSNSFromStepFunctionLambda",
+                          "Arn"
+                        ]
+                      },
+                      "End": true
+                    },
+                    "CallNextState": {
+                      "Type": "Succeed"
+                    }
+                  }
+                },
+                "Next": "ReplicationInstanceDowngrade"
+              },
+              "ReplicationInstanceDowngrade": {
+                "Type": "Task",
+                "Resource": {
+                  "Fn::GetAtt": [
+                    "DMSDowngradeReplicationInstanceLambda",
+                    "Arn"
+                  ]
+                },
+                "ResultPath": "$.replication_instance_status",
+                "End": true
+              }
+            }
+          },
+          "Next": "MultipleEMRExecution"
+        },
+        "MultipleEMRExecution": {
+          "Type": "Map",
+          "ItemsPath": "$.groups",
+          "MaxConcurrency": 3,
+          "Parameters": {
+            "groupId.$": "$$.Map.Item.Value",
+            "env_id.$": "$.env_id",
+            "filePathRaw.$": "$.filePathRaw",
+            "filePathRefined.$": "$.filePathRefined",
+            "modulesPath.$": "$.modulesPath",
+            "configDB.$": "$.configDB",
+            "configTable.$": "$.configTable",
+            "logsTable.$": "$.logsTable",
+            "logHistoryS3Path.$": "$.logHistoryS3Path",
+            "non_anonymized_bucket.$": "$.non_anonymized_bucket",
+            "non_anonymized_db.$": "$.non_anonymized_db",
+            "sns_arn.$": "$.sns_arn",
+            "complete_sns_arn.$": "$.complete_sns_arn"
+          },
+          "Iterator": {
+            "StartAt": "CallEMRCreationLambda",
+            "States": {
+              "CallEMRCreationLambda": {
+                "Type": "Task",
+                "Resource": {
+                  "Fn::GetAtt": [
+                    "CreateEMRClusterLambda",
+                    "Arn"
+                  ]
+                },
+                "Next": "check-emr-status",
+                "ResultPath": "$.emrId"
+              },
+              "check-emr-status": {
+                "Type": "Task",
+                "Resource": {
+                  "Fn::GetAtt": [
+                    "CheckEMRClusterStatusLambda",
+                    "Arn"
+                  ]
+                },
+                "ResultPath": "$.emrState",
+                "Next": "check-emr-started"
+              },
+              "check-emr-started": {
+                "Type": "Choice",
+                "Choices": [
+                  {
+                    "Variable": "$.emrState",
+                    "StringEquals": "STARTING",
+                    "Next": "wait-for-EMR-to-start"
+                  },
+                  {
+                    "Variable": "$.emrState",
+                    "StringEquals": "BOOTSTRAPPING",
+                    "Next": "wait-for-EMR-to-start"
+                  },
+                  {
+                    "Variable": "$.emrState",
+                    "StringEquals": "RUNNING",
+                    "Next": "wait-for-EMR-to-start"
+                  },
+                  {
+                    "Variable": "$.emrState",
+                    "StringEquals": "TERMINATING",
+                    "Next": "emr-stopped"
+                  },
+                  {
+                    "Variable": "$.emrState",
+                    "StringEquals": "TERMINATED",
+                    "Next": "emr-stopped"
+                  },
+                  {
+                    "Variable": "$.emrState",
+                    "StringEquals": "WAITING",
+                    "Next": "get-emr-ip"
+                  },
+                  {
+                    "Variable": "$.emrState",
+                    "StringEquals": "TERMINATED_WITH_ERRORS",
+                    "Next": "emr-creation-failed"
+                  }
+                ]
+              },
+              "wait-for-EMR-to-start": {
+                "Type": "Wait",
+                "Seconds": 240,
+                "Next": "check-emr-status"
+              },
+              "get-emr-ip": {
+                "Type": "Task",
+                "Resource": {
+                  "Fn::GetAtt": [
+                    "GetEMRDNSLambda",
+                    "Arn"
+                  ]
+                },
+                "ResultPath": "$.emrURL",
+                "Next": "Submit-job-on-emr-RAW"
+              },
+              "Submit-job-on-emr-RAW": {
+                "Type": "Task",
+                "Resource": {
+                  "Fn::GetAtt": [
+                    "SubmitEMRJobLambda",
+                    "Arn"
+                  ]
+                },
+                "ResultPath": "$.emrJobId",
+                "Next": "check-emr-job-status-RAW"
+              },
+              "check-emr-job-status-RAW": {
+                "Type": "Task",
+                "Resource": {
+                  "Fn::GetAtt": [
+                    "GetEMRJobStatusLambda",
+                    "Arn"
+                  ]
+                },
+                "ResultPath": "$.emrJobStatus",
+                "Next": "check-emr-job-completion-RAW"
+              },
+              "check-emr-job-completion-RAW": {
+                "Type": "Choice",
+                "Choices": [
+                  {
+                    "Variable": "$.emrJobStatus",
+                    "StringEquals": "COMPLETED",
+                    "Next": "Submit-job-on-emr-REFINED"
+                  },
+                  {
+                    "Variable": "$.emrJobStatus",
+                    "StringEquals": "FAILED",
+                    "Next": "job-failed"
+                  },
+                  {
+                    "Variable": "$.emrJobStatus",
+                    "StringEquals": "RUNNING",
+                    "Next": "Wait-emr-job-completion-RAW"
+                  },
+                  {
+                    "Variable": "$.emrJobStatus",
+                    "StringEquals": "PENDING",
+                    "Next": "Wait-emr-job-completion-RAW"
+                  },
+                  {
+                    "Variable": "$.emrJobStatus",
+                    "StringEquals": "CANCEL_PENDING",
+                    "Next": "job-failed"
+                  },
+                  {
+                    "Variable": "$.emrJobStatus",
+                    "StringEquals": "INTERRUPTED",
+                    "Next": "job-failed"
+                  },
+                  {
+                    "Variable": "$.emrJobStatus",
+                    "StringEquals": "CANCELLED",
+                    "Next": "job-failed"
+                  }
+                ]
+              },
+              "Wait-emr-job-completion-RAW": {
+                "Type": "Wait",
+                "Seconds": 600,
+                "Next": "check-emr-job-status-RAW"
+              },
+              "Submit-job-on-emr-REFINED": {
+                "Type": "Task",
+                "Resource": {
+                  "Fn::GetAtt": [
+                    "SubmitEMRMergeJobLambda",
+                    "Arn"
+                  ]
+                },
+                "ResultPath": "$.emrJobId",
+                "Next": "check-emr-job-status-REFINED"
+              },
+              "check-emr-job-status-REFINED": {
+                "Type": "Task",
+                "Resource": {
+                  "Fn::GetAtt": [
+                    "GetEMRJobStatusLambda",
+                    "Arn"
+                  ]
+                },
+                "ResultPath": "$.emrJobStatus",
+                "Next": "check-emr-job-completion-REFINED"
+              },
+              "check-emr-job-completion-REFINED": {
+                "Type": "Choice",
+                "Choices": [
+                  {
+                    "Variable": "$.emrJobStatus",
+                    "StringEquals": "COMPLETED",
+                    "Next": "job-complete"
+                  },
+                  {
+                    "Variable": "$.emrJobStatus",
+                    "StringEquals": "FAILED",
+                    "Next": "job-failed"
+                  },
+                  {
+                    "Variable": "$.emrJobStatus",
+                    "StringEquals": "RUNNING",
+                    "Next": "Wait-emr-job-completion-REFINED"
+                  },
+                  {
+                    "Variable": "$.emrJobStatus",
+                    "StringEquals": "PENDING",
+                    "Next": "Wait-emr-job-completion-REFINED"
+                  },
+                  {
+                    "Variable": "$.emrJobStatus",
+                    "StringEquals": "CANCEL_PENDING",
+                    "Next": "job-failed"
+                  },
+                  {
+                    "Variable": "$.emrJobStatus",
+                    "StringEquals": "INTERRUPTED",
+                    "Next": "job-failed"
+                  },
+                  {
+                    "Variable": "$.emrJobStatus",
+                    "StringEquals": "CANCELLED",
+                    "Next": "job-failed"
+                  }
+                ]
+              },
+              "Wait-emr-job-completion-REFINED": {
+                "Type": "Wait",
+                "Seconds": 600,
+                "Next": "check-emr-job-status-REFINED"
+              },
+              "job-failed": {
+                "Type": "Task",
+                "Resource": {
+                  "Fn::GetAtt": [
+                    "SendSNSFromStepFunctionLambda",
+                    "Arn"
+                  ]
+                },
+                "ResultPath": "$.emrId",
+                "Next": "job-complete"
+              },
+              "job-complete": {
+                "Type": "Task",
+                "Resource": {
+                  "Fn::GetAtt": [
+                    "TerminateEMRClusterLambda",
+                    "Arn"
+                  ]
+                },
+                "End": true
+              },
+              "emr-stopped": {
+                "Type": "Pass",
+                "Result": "Creation of EMR failed",
+                "End": true
+              },
+              "emr-creation-failed": {
+                "Type": "Task",
+                "Resource": {
+                  "Fn::GetAtt": [
+                    "SendSNSFromStepFunctionLambda",
+                    "Arn"
+                  ]
+                },
+                "ResultPath": "$.emrId",
+                "Next": "emr-stopped"
+              }
+            }
+          },
+          "End": true
+        }
+      }
+    },
+    "RoleArn": {
+      "Fn::GetAtt": [
+        "StepFunctionServiceRole",
+        "Arn"
+      ]
+    }
+  }
+}
